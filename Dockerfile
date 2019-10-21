@@ -6,5 +6,5 @@ RUN go build -o librebread
 FROM alpine:3.10
 WORKDIR /app
 COPY --from=builder /build/librebread .
-
+EXPOSE 80
 CMD ["./librebread"]
