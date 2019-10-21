@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	addr      = ":8099"
+	addr      = ":80"
 	filename  = "messages.txt"
 	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th></thead>`
 	tplFooter = `</table></body></html>`
