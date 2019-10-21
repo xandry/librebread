@@ -1,10 +1,11 @@
 package main
 
 import (
-	"encoding/gob"
+	"bufio"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
-	"os"
 	"time"
 )
 
@@ -17,44 +18,49 @@ type Message struct {
 
 type Storage struct {
 	messages []Message
-	file     *os.File
+	rw       io.ReadWriter
 }
 
-func NewStorage(f *os.File) *Storage {
+func NewStorage(rw io.ReadWriter) *Storage {
 	return &Storage{
-		file: f,
+		rw: rw,
 	}
 }
 
 func (s *Storage) Write(msg Message) error {
-	return gob.NewEncoder(s.file).Encode(msg)
-}
-
-func (s *Storage) Restore() error {
-	_, err := s.file.Seek(0, io.SeekStart)
+	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	dec := gob.NewDecoder(s.file)
-	for {
-		var msg Message
-		err = dec.Decode(&msg)
-		if err == io.EOF {
+	_, err = fmt.Fprintln(s.rw, string(b))
+	return err
+}
+
+func (s *Storage) Restore() error {
+	scanner := bufio.NewScanner(s.rw)
+
+	for scanner.Scan() {
+		ln := scanner.Text()
+		if ln == "" {
 			return nil
 		}
-
+		var msg Message
+		err := json.Unmarshal([]byte(ln), &msg)
 		if err != nil {
 			return err
 		}
+		s.messages = append(s.messages, msg)
 	}
+
+	return nil
 }
 
 func (s *Storage) LastMessages(n int) []Message {
 	msgs := make([]Message, 0, n)
 	max := len(s.messages) - 1
 
-	for i := 0; max-i >= 0 && i >= n; i++ {
+	for i := 0; max-i >= 0 && i < n; i++ {
 		msgs = append(msgs, s.messages[max-i])
 	}
 
@@ -64,8 +70,10 @@ func (s *Storage) LastMessages(n int) []Message {
 func (s *Storage) Push(msg Message) {
 	err := s.Write(msg)
 	if err != nil {
-		log.Println("can not save messages:", err)
+		log.Println("can not save message to log:", err)
+		return
 	}
+
 	s.messages = append(s.messages, msg)
 
 }

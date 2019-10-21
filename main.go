@@ -11,18 +11,20 @@ import (
 
 const (
 	addr      = ":8099"
-	filename  = "messages.gob"
+	filename  = "messages.txt"
 	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th></thead>`
 	tplFooter = `</table></body></html>`
 )
 
 func main() {
-	f, err := os.Create(filename)
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatal("can not open file:", err)
 	}
+	defer f.Close()
 
 	stor := NewStorage(f)
+
 	err = stor.Restore()
 	if err != nil {
 		log.Fatal("can not restore messages:", err)
@@ -43,7 +45,7 @@ func main() {
 		r.Post("/user/status", smsru.Status)
 	})
 
-	err = http.ListenAndServe(addr, nil)
+	err = http.ListenAndServe(addr, r)
 	if err != nil {
 		log.Println("Web server fail:", err)
 	}
