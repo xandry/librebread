@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - run: |
-      docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }} \
-      docker build . -t docker.pkg.github.com/vasyahuyasa/librebread/librebread:latest \
-      docker push docker.pkg.github.com/vasyahuyasa/librebread/librebread:latest 
+    - name: build and publish to docker registry
+      run: |
+        docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }}
+        docker build . -t docker.pkg.github.com/vasyahuyasa/librebread/librebread:latest
+        docker push docker.pkg.github.com/vasyahuyasa/librebread/librebread:latest 
