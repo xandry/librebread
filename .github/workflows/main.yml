@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: build and publish to docker registry
       run: |
-        PROJECT_NAME=`echo ${{ GITHUB_REPOSITORY }} | sed 's/\(.*\)\///'`
+        PROJECT_NAME=`echo ${{ github.repository }} | sed 's/\(.*\)\///'`
         docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }}
-        docker build . -t docker.pkg.github.com/${{ GITHUB_REPOSITORY }}/${PROJECT_NAME}:latest
-        docker push docker.pkg.github.com/${{ GITHUB_REPOSITORY }}/${PROJECT_NAME}:latest 
+        docker build . -t docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest
+        docker push docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest 
