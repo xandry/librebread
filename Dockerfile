@@ -6,5 +6,5 @@ RUN CGO_ENABLED=0 go build -o librebread
 FROM alpine:3.10
 WORKDIR /app
 COPY --from=builder /build/librebread .
-EXPOSE 80
+EXPOSE 443
 CMD ["./librebread"]

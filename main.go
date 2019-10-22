@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	addr      = ":80"
+	addr      = ":443"
 	filename  = "messages.txt"
 	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th></thead>`
 	tplFooter = `</table></body></html>`
@@ -45,7 +45,7 @@ func main() {
 		r.Post("/user/status", smsru.Status)
 	})
 
-	err = http.ListenAndServe(addr, r)
+	err = http.ListenAndServeTLS(addr, "cert/server.crt", "cert/server.key", r)
 	if err != nil {
 		log.Println("Web server fail:", err)
 	}
