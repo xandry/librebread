@@ -13,6 +13,8 @@ jobs:
     - name: build and publish to docker registry
       run: |
         PROJECT_NAME=`echo ${{ github.repository }} | sed 's/\(.*\)\///'`
+        TAG=docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest
+        echo ${TAG}
         docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }}
-        docker build . -t docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest
-        docker push docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest 
+        docker build . -t ${TAG}
+        docker push ${TAG}
