@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	addr      = ":443"
+	TLSaddr   = ":443"
+	addr      = ":80"
 	filename  = "messages.txt"
 	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th></thead>`
 	tplFooter = `</table></body></html>`
@@ -33,8 +34,11 @@ func main() {
 	smsru := SmsRu{stor: stor}
 	devino := Devino{stor: stor}
 
+	go func() {
+		httpServer(stor)
+	}()
+
 	r := chi.NewRouter()
-	r.Get("/", indexHandler(stor))
 	r.Route("/rest", func(r chi.Router) {
 		r.Post("/user/sessionid", devino.UserSessionIdHandler)
 		r.Post("/sms/send", devino.SmsSend)
@@ -45,7 +49,19 @@ func main() {
 		r.Post("/user/status", smsru.Status)
 	})
 
-	err = http.ListenAndServeTLS(addr, "cert/server.crt", "cert/server.key", r)
+	log.Println("start HTTPS on", TLSaddr)
+	err = http.ListenAndServeTLS(TLSaddr, "cert/server.crt", "cert/server.key", r)
+	if err != nil {
+		log.Println("TLS Web server fail:", err)
+	}
+}
+
+func httpServer(stor *Storage) {
+	r := chi.NewRouter()
+	r.Get("/", indexHandler(stor))
+
+	log.Println("start HTTP on", addr)
+	err := http.ListenAndServe(addr, r)
 	if err != nil {
 		log.Println("Web server fail:", err)
 	}
