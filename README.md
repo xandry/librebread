@@ -4,7 +4,7 @@ Librebread is server for mock SMS sender services for testing purposes. SmsRu an
 
 ## Docker
 
-https://cloud.docker.com/repository/docker/vasyahuyasa/librebread
+https://hub.docker.com/r/vasyahuyasa/librebread
 
 ## API
 
