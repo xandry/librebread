@@ -41,8 +41,8 @@ func main() {
 	r := chi.NewRouter()
 	r.Route("/rest", func(r chi.Router) {
 		r.Post("/user/sessionid", devino.UserSessionIdHandler)
-		r.Post("/sms/send", devino.SmsSend)
-		r.Post("/sms/state", devino.SmsState)
+		r.Post("/Sms/Send", devino.SmsSend)
+		r.Post("/Sms/State", devino.SmsState)
 	})
 	r.Route("/sms", func(r chi.Router) {
 		r.Post("/user/send", smsru.Send)
