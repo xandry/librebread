@@ -13,7 +13,7 @@ const (
 	TLSaddr   = ":443"
 	addr      = ":80"
 	filename  = "messages.txt"
-	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th></thead>`
+	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th><th>Provider</th></thead>`
 	tplFooter = `</table></body></html>`
 )
 
@@ -41,11 +41,8 @@ func main() {
 	// devino telecom mock server
 	r := chi.NewRouter()
 	r.Use(caselessMatcher)
-	r.Route("/rest", func(r chi.Router) {
-		r.Post("/user/sessionid", devino.UserSessionIdHandler)
-		r.Post("/sms/send", devino.SmsSend)
-		r.Post("/sms/state", devino.SmsState)
-	})
+
+	devinoTelecomRoutes(r, devino)
 	smsRuRoutes(r, smsru)
 
 	log.Println("start HTTPS on", TLSaddr)
@@ -53,6 +50,19 @@ func main() {
 	if err != nil {
 		log.Println("TLS Web server fail:", err)
 	}
+}
+
+func devinoTelecomRoutes(r chi.Router, devino Devino) {
+	r.Route("/rest", func(r chi.Router) {
+		r.Post("/user/sessionid", devino.UserSessionIdHandler)
+		r.Post("/sms/send", devino.SmsSend)
+		r.Post("/sms/state", devino.SmsState)
+	})
+
+	r.Route("/rest/v2", func(r chi.Router) {
+		r.Post("/sms/send", devino.SmsSend)
+		r.Post("/sms/state", devino.SmsState)
+	})
 }
 
 func smsRuRoutes(mux *chi.Mux, smsru SmsRu) {
@@ -79,7 +89,13 @@ func indexHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
 		b.WriteString(tplHeader)
 		for _, msg := range stor.LastMessages(50) {
-			b.WriteString("<tr>" + "<td>" + msg.Time.Format("2006-2006-01-02 15:04:05") + "</td>" + "<td>" + msg.From + "</td>" + "<td>" + msg.To + "</td>" + "<td>" + msg.Text + "</td>" + "</tr>")
+			b.WriteString("<tr>" +
+				"<td>" + msg.Time.Format("2006-2006-01-02 15:04:05") + "</td>" +
+				"<td>" + msg.From + "</td>" +
+				"<td>" + msg.To + "</td>" +
+				"<td>" + msg.Text + "</td>" +
+				"<td>" + msg.Provider + "</td>" +
+				"</tr>")
 		}
 		b.WriteString(tplFooter)
 		_, err := w.Write([]byte(b.String()))

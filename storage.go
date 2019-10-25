@@ -10,10 +10,11 @@ import (
 )
 
 type Message struct {
-	Time time.Time
-	From string
-	To   string
-	Text string
+	Time     time.Time
+	From     string
+	To       string
+	Text     string
+	Provider string
 }
 
 type Storage struct {

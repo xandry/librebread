@@ -9,6 +9,7 @@ import (
 )
 
 const mockSessionID = "MOCK-SESSION-ID"
+const providerDevino = "devino"
 
 var mockMessageIDS = []string{"579700854169272358"}
 var mockState = struct {
@@ -38,19 +39,19 @@ func (sms *Devino) UserSessionIdHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (sms *Devino) SmsSend(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.FormValue("SessionID")
 	srcAddr := r.FormValue("SourceAddress")
 	dstAddr := r.FormValue("DestinationAddress")
 	data := r.FormValue("Data")
 
 	sms.stor.Push(Message{
-		Time: time.Now(),
-		From: srcAddr,
-		To:   dstAddr,
-		Text: data,
+		Time:     time.Now(),
+		From:     srcAddr,
+		To:       dstAddr,
+		Text:     data,
+		Provider: providerDevino,
 	})
 
-	log.Printf("Devino: send session=%q src=%q dst=%q msg=%q", sessionID, srcAddr, dstAddr, data)
+	log.Printf("Devino send: src=%q dst=%q msg=%q", srcAddr, dstAddr, data)
 
 	enc := json.NewEncoder(w)
 	err := enc.Encode(mockMessageIDS)
@@ -59,10 +60,9 @@ func (sms *Devino) SmsSend(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (sms *Devino) SmsState(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.FormValue("SessionID")
 	msgID := r.FormValue("messageId")
 
-	log.Printf("Devino: session=%q msgId=%q", sessionID, msgID)
+	log.Printf("Devino state: msgId=%q", msgID)
 
 	enc := json.NewEncoder(w)
 	err := enc.Encode(mockState)
