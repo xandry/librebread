@@ -90,7 +90,7 @@ func indexHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 		b.WriteString(tplHeader)
 		for _, msg := range stor.LastMessages(50) {
 			b.WriteString("<tr>" +
-				"<td>" + msg.Time.Format("2006-2006-01-02 15:04:05") + "</td>" +
+				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
 				"<td>" + msg.From + "</td>" +
 				"<td>" + msg.To + "</td>" +
 				"<td>" + msg.Text + "</td>" +
