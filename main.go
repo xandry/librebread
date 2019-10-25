@@ -35,19 +35,16 @@ func main() {
 	devino := Devino{stor: stor}
 
 	go func() {
-		httpServer(stor)
+		httpServer(stor, smsru)
 	}()
 
+	// devino telecom mock server
 	r := chi.NewRouter()
 	r.Use(caselessMatcher)
 	r.Route("/rest", func(r chi.Router) {
 		r.Post("/user/sessionid", devino.UserSessionIdHandler)
 		r.Post("/sms/send", devino.SmsSend)
 		r.Post("/sms/state", devino.SmsState)
-	})
-	r.Route("/sms", func(r chi.Router) {
-		r.Post("/user/send", smsru.Send)
-		r.Post("/user/status", smsru.Status)
 	})
 
 	log.Println("start HTTPS on", TLSaddr)
@@ -57,10 +54,14 @@ func main() {
 	}
 }
 
-func httpServer(stor *Storage) {
+// sms.ru and stats server
+func httpServer(stor *Storage, smsru SmsRu) {
 	r := chi.NewRouter()
 	r.Get("/", indexHandler(stor))
-
+	r.Route("/sms", func(r chi.Router) {
+		r.Post("/user/send", smsru.Send)
+		r.Post("/user/status", smsru.Status)
+	})
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
 	if err != nil {
