@@ -57,8 +57,8 @@ func main() {
 
 func smsRuRoutes(mux *chi.Mux, smsru SmsRu) {
 	mux.Route("/sms", func(r chi.Router) {
-		r.Post("/user/send", smsru.Send)
-		r.Post("/user/status", smsru.Status)
+		r.Post("/send", smsru.Send)
+		r.Post("/status", smsru.Status)
 	})
 }
 
