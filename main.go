@@ -39,10 +39,11 @@ func main() {
 	}()
 
 	r := chi.NewRouter()
+	r.Use(caselessMatcher)
 	r.Route("/rest", func(r chi.Router) {
 		r.Post("/user/sessionid", devino.UserSessionIdHandler)
-		r.Post("/Sms/Send", devino.SmsSend)
-		r.Post("/Sms/State", devino.SmsState)
+		r.Post("/sms/send", devino.SmsSend)
+		r.Post("/sms/state", devino.SmsState)
 	})
 	r.Route("/sms", func(r chi.Router) {
 		r.Post("/user/send", smsru.Send)
@@ -80,4 +81,12 @@ func indexHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("can not send index to client: %v", err)
 		}
 	}
+}
+
+// caselessMatcher is convert request path to lowercase
+func caselessMatcher(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Path = strings.ToLower(r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }
