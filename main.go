@@ -46,6 +46,7 @@ func main() {
 		r.Post("/sms/send", devino.SmsSend)
 		r.Post("/sms/state", devino.SmsState)
 	})
+	smsRuRoutes(r, smsru)
 
 	log.Println("start HTTPS on", TLSaddr)
 	err = http.ListenAndServeTLS(TLSaddr, "cert/server.crt", "cert/server.key", r)
@@ -54,14 +55,18 @@ func main() {
 	}
 }
 
+func smsRuRoutes(mux *chi.Mux, smsru SmsRu) {
+	mux.Route("/sms", func(r chi.Router) {
+		r.Post("/user/send", smsru.Send)
+		r.Post("/user/status", smsru.Status)
+	})
+}
+
 // sms.ru and stats server
 func httpServer(stor *Storage, smsru SmsRu) {
 	r := chi.NewRouter()
 	r.Get("/", indexHandler(stor))
-	r.Route("/sms", func(r chi.Router) {
-		r.Post("/user/send", smsru.Send)
-		r.Post("/user/status", smsru.Status)
-	})
+	smsRuRoutes(r, smsru)
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
 	if err != nil {
