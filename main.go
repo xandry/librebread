@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,11 +11,55 @@ import (
 )
 
 const (
-	TLSaddr   = ":443"
-	addr      = ":80"
-	filename  = "messages.txt"
-	tplHeader = `<html><body><table border=1><thead><th>Date</th><th>From</th><th>Phone</th><th>Msg</th><th>Provider</th></thead>`
-	tplFooter = `</table></body></html>`
+	TLSaddr     = ":443"
+	addr        = ":80"
+	filename    = "messages.txt"
+	helpdekFile = "helpdesk.msgp"
+
+	tplHeader = `
+	<html>
+		<head>
+			<style>
+				ol {
+					padding: 10px; 
+					list-style-type: none;				
+				}
+				ol li {
+					float: left;
+					margin: 0 10px 0 0;
+				}
+			</style>
+		</head>
+		<body>
+			<ol>
+				<li><a href="/">sms</a></li>
+				<li><a href="/helpdesk">helpdesk</a></li>
+			</ol>`
+
+	smsTableHeader = `
+	<table border=1>
+	    <caption>SMS</caption>
+		<thead>
+			<th>Date</th>
+			<th>From</th>
+			<th>Phone</th>
+			<th>Msg</th>
+			<th>Provider</th>
+		</thead>`
+
+	smsTableFooter = `</table>`
+
+	helpdeskTableHeader = `
+		<table border=1>
+			<caption>Helpdesk</caption>
+			<thead>
+				<th>Date</th>
+				<th>Title</th>
+				<th>Description</th>
+			</thead>`
+	helpdeskTableFooter = ``
+
+	tplFooter = `</body></html>`
 )
 
 func main() {
@@ -28,14 +73,27 @@ func main() {
 
 	err = stor.Restore()
 	if err != nil {
-		log.Fatal("can not restore messages:", err)
+		log.Fatal("can not restore SMS messages:", err)
+	}
+
+	hdf, err := os.OpenFile(helpdekFile, os.O_CREATE|os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal("can not open helpdesk file:", err)
+	}
+	defer hdf.Close()
+
+	hstor := newHelpdeskStorage(hdf)
+
+	err = hstor.Restore()
+	if err != nil {
+		log.Fatal("can not restore HelpDesk messages:", err)
 	}
 
 	smsru := SmsRu{stor: stor}
 	devino := Devino{stor: stor}
 
 	go func() {
-		httpServer(stor, smsru)
+		httpServer(stor, hstor, smsru)
 	}()
 
 	// devino telecom mock server
@@ -44,6 +102,7 @@ func main() {
 
 	devinoTelecomRoutes(r, devino)
 	smsRuRoutes(r, smsru)
+	helpdeskRoutes(r, hstor)
 
 	log.Println("start HTTPS on", TLSaddr)
 	err = http.ListenAndServeTLS(TLSaddr, "cert/server.crt", "cert/server.key", r)
@@ -72,10 +131,19 @@ func smsRuRoutes(mux *chi.Mux, smsru SmsRu) {
 	})
 }
 
+func helpdeskRoutes(mux *chi.Mux, stor *HelpdeskStorage) {
+	mux.Post("/api/v2/tickets/", helpdeskEddyHandler(stor))
+}
+
 // sms.ru and stats server
-func httpServer(stor *Storage, smsru SmsRu) {
+func httpServer(stor *Storage, hstor *HelpdeskStorage, smsru SmsRu) {
 	r := chi.NewRouter()
-	r.Get("/", indexHandler(stor))
+	r.Group(func(r chi.Router) {
+		r.Use(indexPageWrapper)
+		r.Get("/", indexSmsHandler(stor))
+		r.Get("/helpdesk", helpdeskIndexHandler(hstor))
+	})
+
 	smsRuRoutes(r, smsru)
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
@@ -84,10 +152,10 @@ func httpServer(stor *Storage, smsru SmsRu) {
 	}
 }
 
-func indexHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
+func indexSmsHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
-		b.WriteString(tplHeader)
+		b.WriteString(smsTableHeader)
 		for _, msg := range stor.LastMessages(50) {
 			b.WriteString("<tr>" +
 				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
@@ -97,12 +165,39 @@ func indexHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 				"<td>" + msg.Provider + "</td>" +
 				"</tr>")
 		}
-		b.WriteString(tplFooter)
+		b.WriteString(smsTableFooter)
 		_, err := w.Write([]byte(b.String()))
 		if err != nil {
 			log.Printf("can not send index to client: %v", err)
 		}
 	}
+}
+
+func helpdeskIndexHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b := strings.Builder{}
+		b.WriteString(helpdeskTableHeader)
+		for _, msg := range stor.LastMessages(50) {
+			b.WriteString("<tr>" +
+				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
+				"<td>" + msg.Title + "</td>" +
+				"<td>" + msg.Description + "</td>" +
+				"</tr>")
+		}
+		b.WriteString(helpdeskTableFooter)
+		_, err := w.Write([]byte(b.String()))
+		if err != nil {
+			log.Printf("can not send index to client: %v", err)
+		}
+	}
+}
+
+func indexPageWrapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, tplHeader)
+		next.ServeHTTP(w, r)
+		fmt.Fprintf(w, tplFooter)
+	})
 }
 
 // caselessMatcher is convert request path to lowercase
