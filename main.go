@@ -145,6 +145,8 @@ func httpServer(stor *Storage, hstor *HelpdeskStorage, smsru SmsRu) {
 	})
 
 	smsRuRoutes(r, smsru)
+	helpdeskRoutes(r, hstor)
+
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
 	if err != nil {
