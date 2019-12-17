@@ -36,9 +36,30 @@ const (
 				<li><a href="/helpdesk">helpdesk</a></li>
 			</ol>`
 
-	smsTableHeader = `
+	smsTableFooter = `</table>`
+
+	helpdeskTableFooter = ``
+
+	tplFooter = `</body></html>`
+)
+
+func helpdeskTableHeaderWithCount(feedbackCount int) string {
+	const helpdeskTableHeader = `
 	<table border=1>
-	    <caption>SMS</caption>
+		<caption>Helpdesk (%d)</caption>
+		<thead>
+			<th>Date</th>
+			<th>Title</th>
+			<th>Description</th>
+		</thead>`
+
+	return fmt.Sprintf(helpdeskTableHeader, feedbackCount)
+}
+
+func smsTableHeaderWithCount(messageCount int) string {
+	const smsTableHeader = `
+	<table border=1>
+	    <caption>SMS (%d)</caption>
 		<thead>
 			<th>Date</th>
 			<th>From</th>
@@ -47,20 +68,8 @@ const (
 			<th>Provider</th>
 		</thead>`
 
-	smsTableFooter = `</table>`
-
-	helpdeskTableHeader = `
-		<table border=1>
-			<caption>Helpdesk</caption>
-			<thead>
-				<th>Date</th>
-				<th>Title</th>
-				<th>Description</th>
-			</thead>`
-	helpdeskTableFooter = ``
-
-	tplFooter = `</body></html>`
-)
+	return fmt.Sprintf(smsTableHeader, messageCount)
+}
 
 func main() {
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0777)
@@ -157,7 +166,7 @@ func httpServer(stor *Storage, hstor *HelpdeskStorage, smsru SmsRu) {
 func indexSmsHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
-		b.WriteString(smsTableHeader)
+		b.WriteString(smsTableHeaderWithCount(stor.Len()))
 		for _, msg := range stor.LastMessages(50) {
 			b.WriteString("<tr>" +
 				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
@@ -178,7 +187,7 @@ func indexSmsHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request)
 func helpdeskIndexHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
-		b.WriteString(helpdeskTableHeader)
+		b.WriteString(helpdeskTableHeaderWithCount(stor.Len()))
 		for _, msg := range stor.LastMessages(50) {
 			b.WriteString("<tr>" +
 				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
@@ -196,9 +205,9 @@ func helpdeskIndexHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *
 
 func indexPageWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, tplHeader)
+		fmt.Fprint(w, tplHeader)
 		next.ServeHTTP(w, r)
-		fmt.Fprintf(w, tplFooter)
+		fmt.Fprint(w, tplFooter)
 	})
 }
 

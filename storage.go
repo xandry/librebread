@@ -104,6 +104,10 @@ func (s *Storage) Push(msg Message) {
 
 }
 
+func (s *Storage) Len() int {
+	return len(s.messages)
+}
+
 func (s *HelpdeskStorage) Write(msg HelpdeskMsg) error {
 	if s.enc == nil {
 		s.enc = codec.NewEncoder(s.rw, &codec.MsgpackHandle{})
@@ -160,4 +164,8 @@ func (s *HelpdeskStorage) Push(msg HelpdeskMsg) {
 
 	s.messages = append(s.messages, msg)
 
+}
+
+func (s *HelpdeskStorage) Len() int {
+	return len(s.messages)
 }
