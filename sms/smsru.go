@@ -1,4 +1,4 @@
-package main
+package sms
 
 import (
 	"encoding/json"
@@ -21,7 +21,7 @@ balance=4122.56`
 )
 
 type SmsRu struct {
-	stor *Storage
+	Stor *Storage
 }
 
 type smsInfo struct {
@@ -50,7 +50,7 @@ func (sms *SmsRu) Send(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("text")
 	isJson := r.FormValue("json")
 
-	sms.stor.Push(Message{
+	sms.Stor.Push(Message{
 		Time:     time.Now(),
 		From:     from,
 		To:       to,

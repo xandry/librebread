@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
+	"github.com/vasyahuyasa/librebread/helpdesk"
+	"github.com/vasyahuyasa/librebread/sms"
 )
 
 const (
@@ -78,9 +80,9 @@ func main() {
 	}
 	defer f.Close()
 
-	stor := NewStorage(f)
+	smsStor := sms.NewStorage(f)
 
-	err = stor.Restore()
+	err = smsStor.Restore()
 	if err != nil {
 		log.Fatal("can not restore SMS messages:", err)
 	}
@@ -91,18 +93,18 @@ func main() {
 	}
 	defer hdf.Close()
 
-	hstor := newHelpdeskStorage(hdf)
+	hstor := helpdesk.NewStorage(hdf)
 
 	err = hstor.Restore()
 	if err != nil {
 		log.Fatal("can not restore HelpDesk messages:", err)
 	}
 
-	smsru := SmsRu{stor: stor}
-	devino := Devino{stor: stor}
+	smsru := sms.SmsRu{Stor: smsStor}
+	devino := sms.Devino{Stor: smsStor}
 
 	go func() {
-		httpServer(stor, hstor, smsru)
+		httpServer(smsStor, hstor, smsru)
 	}()
 
 	// devino telecom mock server
@@ -120,7 +122,7 @@ func main() {
 	}
 }
 
-func devinoTelecomRoutes(r chi.Router, devino Devino) {
+func devinoTelecomRoutes(r chi.Router, devino sms.Devino) {
 	r.Route("/rest", func(r chi.Router) {
 		r.Post("/user/sessionid", devino.UserSessionIdHandler)
 		r.Post("/sms/send", devino.SmsSend)
@@ -133,19 +135,19 @@ func devinoTelecomRoutes(r chi.Router, devino Devino) {
 	})
 }
 
-func smsRuRoutes(mux *chi.Mux, smsru SmsRu) {
+func smsRuRoutes(mux *chi.Mux, smsru sms.SmsRu) {
 	mux.Route("/sms", func(r chi.Router) {
 		r.Post("/send", smsru.Send)
 		r.Post("/status", smsru.Status)
 	})
 }
 
-func helpdeskRoutes(mux *chi.Mux, stor *HelpdeskStorage) {
-	mux.Post("/api/v2/tickets/", helpdeskEddyHandler(stor))
+func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage) {
+	mux.Post("/api/v2/tickets/", helpdesk.HelpdeskEddyHandler(stor))
 }
 
 // sms.ru and stats server
-func httpServer(stor *Storage, hstor *HelpdeskStorage, smsru SmsRu) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		r.Use(indexPageWrapper)
@@ -163,7 +165,7 @@ func httpServer(stor *Storage, hstor *HelpdeskStorage, smsru SmsRu) {
 	}
 }
 
-func indexSmsHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request) {
+func indexSmsHandler(stor *sms.Storage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
 		b.WriteString(smsTableHeaderWithCount(stor.Len()))
@@ -184,7 +186,7 @@ func indexSmsHandler(stor *Storage) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func helpdeskIndexHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
+func helpdeskIndexHandler(stor *helpdesk.HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := strings.Builder{}
 		b.WriteString(helpdeskTableHeaderWithCount(stor.Len()))

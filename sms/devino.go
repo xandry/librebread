@@ -1,4 +1,4 @@
-package main
+package sms
 
 import (
 	"encoding/json"
@@ -31,7 +31,7 @@ var mockState = struct {
 }
 
 type Devino struct {
-	stor *Storage
+	Stor *Storage
 }
 
 func (sms *Devino) UserSessionIdHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +43,7 @@ func (sms *Devino) SmsSend(w http.ResponseWriter, r *http.Request) {
 	dstAddr := r.FormValue("DestinationAddress")
 	data := r.FormValue("Data")
 
-	sms.stor.Push(Message{
+	sms.Stor.Push(Message{
 		Time:     time.Now(),
 		From:     srcAddr,
 		To:       dstAddr,

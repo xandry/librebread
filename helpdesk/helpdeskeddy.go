@@ -1,4 +1,4 @@
-package main
+package helpdesk
 
 import (
 	"log"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func helpdeskEddyHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
+func HelpdeskEddyHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		msg := HelpdeskMsg{
 			Time:         time.Now(),
