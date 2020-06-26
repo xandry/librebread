@@ -1,6 +1,6 @@
 # librebread
 
-Librebread is server for mock SMS sender services for testing purposes. SmsRu and Devino telecom has beed imaplemended. Librebread is just random name
+Librebread is server for mock SMS sender services and smtp service for testing purposes. SmsRu and Devino telecom has beed imaplemended. Librebread is just random name
 
 ## Docker
 
