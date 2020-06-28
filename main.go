@@ -9,14 +9,18 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/vasyahuyasa/librebread/helpdesk"
+	"github.com/vasyahuyasa/librebread/mailserver"
 	"github.com/vasyahuyasa/librebread/sms"
 )
 
 const (
 	TLSaddr     = ":443"
 	addr        = ":80"
+	smtpAddr    = ":25"
+	pop3Addr    = ":110"
 	filename    = "messages.txt"
 	helpdekFile = "helpdesk.msgp"
+	emailFile   = "email.msgp"
 
 	tplHeader = `
 	<html>
@@ -36,11 +40,14 @@ const (
 			<ol>
 				<li><a href="/">sms</a></li>
 				<li><a href="/helpdesk">helpdesk</a></li>
+				<li><a href="/email">email</a></li>
 			</ol>`
 
 	smsTableFooter = `</table>`
 
-	helpdeskTableFooter = ``
+	helpdeskTableFooter = `</table>`
+
+	emailTableFooter = `</table>`
 
 	tplFooter = `</body></html>`
 )
@@ -73,6 +80,19 @@ func smsTableHeaderWithCount(messageCount int) string {
 	return fmt.Sprintf(smsTableHeader, messageCount)
 }
 
+func emailTableHeaderWithCount(count int) string {
+
+	return fmt.Sprintf(`
+	<table border=1>
+		<caption>Email (%d)</caption>
+		<thead>
+			<th>Date</th>
+			<th>From</th>
+			<th>To</th>
+			<th>Data</th>
+		</thead>`, count)
+}
+
 func main() {
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
@@ -100,11 +120,42 @@ func main() {
 		log.Fatal("can not restore HelpDesk messages:", err)
 	}
 
+	mf, err := os.OpenFile(emailFile, os.O_CREATE|os.O_RDWR, 0777)
+	if err != nil {
+		log.Fatal("can not open email file:", err)
+	}
+
+	mailStor := mailserver.NewStorage(mf)
+
+	err = mailStor.Restore()
+	if err != nil {
+		log.Fatal("can not restore email messages:", err)
+	}
+
 	smsru := sms.SmsRu{Stor: smsStor}
 	devino := sms.Devino{Stor: smsStor}
 
+	// smtp
 	go func() {
-		httpServer(smsStor, hstor, smsru)
+		smtpsrv := mailserver.NewSmtpServer(smtpAddr, *mailStor)
+
+		err := smtpsrv.ListenAndServe()
+		if err != nil {
+			log.Fatalf("smtp server failed: %v", err)
+		}
+	}()
+
+	// pop3
+	go func() {
+		pop3 := mailserver.NewPopServer(pop3Addr)
+		err := pop3.ListenAndServe()
+		if err != nil {
+			log.Fatalf("pop3 server failed: %v", err)
+		}
+	}()
+
+	go func() {
+		httpServer(smsStor, hstor, smsru, mailStor)
 	}()
 
 	// devino telecom mock server
@@ -147,12 +198,13 @@ func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage) {
 }
 
 // sms.ru and stats server
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		r.Use(indexPageWrapper)
 		r.Get("/", indexSmsHandler(stor))
 		r.Get("/helpdesk", helpdeskIndexHandler(hstor))
+		r.Get("/email", emailIndexHandler(mailStor))
 	})
 
 	smsRuRoutes(r, smsru)
@@ -198,6 +250,26 @@ func helpdeskIndexHandler(stor *helpdesk.HelpdeskStorage) func(w http.ResponseWr
 				"</tr>")
 		}
 		b.WriteString(helpdeskTableFooter)
+		_, err := w.Write([]byte(b.String()))
+		if err != nil {
+			log.Printf("can not send index to client: %v", err)
+		}
+	}
+}
+
+func emailIndexHandler(stor *mailserver.MailStorage) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b := strings.Builder{}
+		b.WriteString(emailTableHeaderWithCount(stor.Len()))
+		for _, msg := range stor.LastMessages() {
+			b.WriteString("<tr>" +
+				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
+				"<td>" + msg.From + "</td>" +
+				"<td>" + msg.To + "</td>" +
+				"<td>" + msg.Data + "</td>" +
+				"</tr>")
+		}
+		b.WriteString(emailTableFooter)
 		_, err := w.Write([]byte(b.String()))
 		if err != nil {
 			log.Printf("can not send index to client: %v", err)

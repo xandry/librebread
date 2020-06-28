@@ -1,7 +1,6 @@
-package smtpserver
+package mailserver
 
 import (
-	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -9,15 +8,16 @@ import (
 	"github.com/emersion/go-smtp"
 )
 
-type Server struct {
+type backend struct {
 }
 
 type session struct{}
 
-func (svr *Server) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	if username != "username" || password != "password" {
-		return nil, errors.New("Invalid username or password")
-	}
+func (bkd *backend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
+	return &session{}, nil
+}
+
+func (bkd *backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
 	return &session{}, nil
 }
 
