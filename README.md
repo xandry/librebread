@@ -30,3 +30,11 @@ __SmsRU__
 |--------------------|-------------|
 | `/sms/user/send`   | send sms    |
 | `/sms/user/status` | messages status |
+
+### SMTP 25 port
+
+Plain SMTP server
+
+### POP3 110 port
+
+Mock of pop3 server
