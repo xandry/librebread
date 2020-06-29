@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"os"
@@ -86,9 +87,10 @@ func emailTableHeaderWithCount(count int) string {
 	<table border=1>
 		<caption>Email (%d)</caption>
 		<thead>
-			<th>Date</th>
+			<th>Time</th>
 			<th>From</th>
 			<th>To</th>
+			<th>Subject</th>
 			<th>Data</th>
 		</thead>`, count)
 }
@@ -137,7 +139,7 @@ func main() {
 
 	// smtp
 	go func() {
-		smtpsrv := mailserver.NewSmtpServer(smtpAddr, *mailStor)
+		smtpsrv := mailserver.NewSmtpServer(smtpAddr, mailStor)
 
 		err := smtpsrv.ListenAndServe()
 		if err != nil {
@@ -263,10 +265,11 @@ func emailIndexHandler(stor *mailserver.MailStorage) func(w http.ResponseWriter,
 		b.WriteString(emailTableHeaderWithCount(stor.Len()))
 		for _, msg := range stor.LastMessages() {
 			b.WriteString("<tr>" +
-				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
-				"<td>" + msg.From + "</td>" +
-				"<td>" + msg.To + "</td>" +
-				"<td>" + msg.Data + "</td>" +
+				"<td>" + msg.SentOn.Format("2006-01-02 15:04:05") + "</td>" +
+				"<td>" + html.EscapeString(msg.From) + "</td>" +
+				"<td>" + html.EscapeString(msg.To) + "</td>" +
+				"<td>" + html.EscapeString(msg.Subject) + "</td>" +
+				"<td>" + html.EscapeString(msg.Body) + "</td>" +
 				"</tr>")
 		}
 		b.WriteString(emailTableFooter)

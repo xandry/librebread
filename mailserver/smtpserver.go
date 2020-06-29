@@ -9,10 +9,10 @@ import (
 
 type SmtpServer struct {
 	addr string
-	stor MailStorage
+	stor *MailStorage
 }
 
-func NewSmtpServer(addr string, stor MailStorage) *SmtpServer {
+func NewSmtpServer(addr string, stor *MailStorage) *SmtpServer {
 	return &SmtpServer{
 		addr: addr,
 		stor: stor,
@@ -20,7 +20,9 @@ func NewSmtpServer(addr string, stor MailStorage) *SmtpServer {
 }
 
 func (srv *SmtpServer) ListenAndServe() error {
-	be := &backend{}
+	be := &backend{
+		store: srv.stor,
+	}
 
 	s := smtp.NewServer(be)
 

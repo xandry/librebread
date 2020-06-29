@@ -2,41 +2,49 @@ package mailserver
 
 import (
 	"io"
-	"io/ioutil"
-	"log"
 
 	"github.com/emersion/go-smtp"
 )
 
 type backend struct {
+	store *MailStorage
 }
 
-type session struct{}
+type session struct {
+	store *MailStorage
+}
 
 func (bkd *backend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	return &session{}, nil
+	return &session{
+		store: bkd.store,
+	}, nil
 }
 
 func (bkd *backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
-	return &session{}, nil
+	return &session{
+		store: bkd.store,
+	}, nil
 }
 
 func (s *session) Mail(from string, opts smtp.MailOptions) error {
-	log.Println("Mail from:", from)
 	return nil
 }
 
 func (s *session) Rcpt(to string) error {
-	log.Println("Rcpt to:", to)
 	return nil
 }
 
 func (s *session) Data(r io.Reader) error {
-	if b, err := ioutil.ReadAll(r); err != nil {
+	msg, err := messageFromReader(r)
+	if err != nil {
 		return err
-	} else {
-		log.Println("Data:", string(b))
 	}
+
+	err = s.store.Push(msg)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
