@@ -21,7 +21,8 @@ balance=4122.56`
 )
 
 type SmsRu struct {
-	Stor *Storage
+	Stor     *Storage
+	Notifier SmsNotifier
 }
 
 type smsInfo struct {
@@ -50,13 +51,16 @@ func (sms *SmsRu) Send(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("text")
 	isJson := r.FormValue("json")
 
-	sms.Stor.Push(Message{
+	msg := Message{
 		Time:     time.Now(),
 		From:     from,
 		To:       to,
 		Text:     text,
 		Provider: providerSmsRu,
-	})
+	}
+	sms.Stor.Push(msg)
+
+	sms.Notifier.SmsNotify(msg)
 
 	log.Printf("SmsRu send: from=%q to=%q text=%q", from, to, text)
 

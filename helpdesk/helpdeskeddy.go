@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func HelpdeskEddyHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *http.Request) {
+func HelpdeskEddyHandler(stor *HelpdeskStorage, notifier HelpdeskNotifier) func(w http.ResponseWriter, r *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		msg := HelpdeskMsg{
 			Time:         time.Now(),
@@ -21,6 +21,8 @@ func HelpdeskEddyHandler(stor *HelpdeskStorage) func(w http.ResponseWriter, r *h
 		log.Printf("HelpdeskEddy new: %s %s", msg.Title, msg.Description)
 
 		stor.Push(msg)
+
+		notifier.HelpdeskNotify(msg)
 	})
 }
 

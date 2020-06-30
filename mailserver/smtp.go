@@ -2,27 +2,33 @@ package mailserver
 
 import (
 	"io"
+	"log"
 
 	"github.com/emersion/go-smtp"
 )
 
 type backend struct {
-	store *MailStorage
+	store    *MailStorage
+	notifier EmailNotifier
 }
 
 type session struct {
-	store *MailStorage
+	store    *MailStorage
+	notifier EmailNotifier
 }
 
 func (bkd *backend) Login(state *smtp.ConnectionState, username, password string) (smtp.Session, error) {
-	return &session{
-		store: bkd.store,
-	}, nil
+	return bkd.loginAlways()
 }
 
 func (bkd *backend) AnonymousLogin(state *smtp.ConnectionState) (smtp.Session, error) {
+	return bkd.loginAlways()
+}
+
+func (bkd *backend) loginAlways() (smtp.Session, error) {
 	return &session{
-		store: bkd.store,
+		store:    bkd.store,
+		notifier: bkd.notifier,
 	}, nil
 }
 
@@ -44,6 +50,10 @@ func (s *session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+
+	s.notifier.EmailNotify(msg)
+
+	log.Println("mail recived")
 
 	return nil
 }

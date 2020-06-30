@@ -8,20 +8,23 @@ import (
 )
 
 type SmtpServer struct {
-	addr string
-	stor *MailStorage
+	addr     string
+	stor     *MailStorage
+	notifier EmailNotifier
 }
 
-func NewSmtpServer(addr string, stor *MailStorage) *SmtpServer {
+func NewSmtpServer(addr string, stor *MailStorage, notifier EmailNotifier) *SmtpServer {
 	return &SmtpServer{
-		addr: addr,
-		stor: stor,
+		addr:     addr,
+		stor:     stor,
+		notifier: notifier,
 	}
 }
 
 func (srv *SmtpServer) ListenAndServe() error {
 	be := &backend{
-		store: srv.stor,
+		store:    srv.stor,
+		notifier: srv.notifier,
 	}
 
 	s := smtp.NewServer(be)

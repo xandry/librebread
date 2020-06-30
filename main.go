@@ -12,6 +12,7 @@ import (
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
 	"github.com/vasyahuyasa/librebread/sms"
+	"github.com/vasyahuyasa/librebread/ssenotifier"
 )
 
 const (
@@ -134,12 +135,21 @@ func main() {
 		log.Fatal("can not restore email messages:", err)
 	}
 
-	smsru := sms.SmsRu{Stor: smsStor}
-	devino := sms.Devino{Stor: smsStor}
+	sseNotifier := ssenotifier.NewBroker()
+
+	smsru := sms.SmsRu{
+		Stor:     smsStor,
+		Notifier: sseNotifier,
+	}
+
+	devino := sms.Devino{
+		Stor:     smsStor,
+		Notifier: sseNotifier,
+	}
 
 	// smtp
 	go func() {
-		smtpsrv := mailserver.NewSmtpServer(smtpAddr, mailStor)
+		smtpsrv := mailserver.NewSmtpServer(smtpAddr, mailStor, sseNotifier)
 
 		err := smtpsrv.ListenAndServe()
 		if err != nil {
@@ -157,7 +167,7 @@ func main() {
 	}()
 
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier)
 	}()
 
 	// devino telecom mock server
@@ -166,7 +176,7 @@ func main() {
 
 	devinoTelecomRoutes(r, devino)
 	smsRuRoutes(r, smsru)
-	helpdeskRoutes(r, hstor)
+	helpdeskRoutes(r, hstor, sseNotifier)
 
 	log.Println("start HTTPS on", TLSaddr)
 	err = http.ListenAndServeTLS(TLSaddr, "cert/server.crt", "cert/server.key", r)
@@ -195,12 +205,12 @@ func smsRuRoutes(mux *chi.Mux, smsru sms.SmsRu) {
 	})
 }
 
-func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage) {
-	mux.Post("/api/v2/tickets/", helpdesk.HelpdeskEddyHandler(stor))
+func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage, notifier helpdesk.HelpdeskNotifier) {
+	mux.Post("/api/v2/tickets/", helpdesk.HelpdeskEddyHandler(stor, notifier))
 }
 
 // sms.ru and stats server
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		r.Use(indexPageWrapper)
@@ -209,8 +219,10 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 		r.Get("/email", emailIndexHandler(mailStor))
 	})
 
+	r.Get("/events", sseNotification.ClientHandler())
+
 	smsRuRoutes(r, smsru)
-	helpdeskRoutes(r, hstor)
+	helpdeskRoutes(r, hstor, sseNotification)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)

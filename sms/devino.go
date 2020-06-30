@@ -31,7 +31,8 @@ var mockState = struct {
 }
 
 type Devino struct {
-	Stor *Storage
+	Stor     *Storage
+	Notifier SmsNotifier
 }
 
 func (sms *Devino) UserSessionIdHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,13 +44,16 @@ func (sms *Devino) SmsSend(w http.ResponseWriter, r *http.Request) {
 	dstAddr := r.FormValue("DestinationAddress")
 	data := r.FormValue("Data")
 
-	sms.Stor.Push(Message{
+	msg := Message{
 		Time:     time.Now(),
 		From:     srcAddr,
 		To:       dstAddr,
 		Text:     data,
 		Provider: providerDevino,
-	})
+	}
+	sms.Stor.Push(msg)
+
+	sms.Notifier.SmsNotify(msg)
 
 	log.Printf("Devino send: src=%q dst=%q msg=%q", srcAddr, dstAddr, data)
 
@@ -59,6 +63,7 @@ func (sms *Devino) SmsSend(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Devino: can send sessionID to client: %v", err)
 	}
 }
+
 func (sms *Devino) SmsState(w http.ResponseWriter, r *http.Request) {
 	msgID := r.FormValue("messageId")
 
