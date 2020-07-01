@@ -16,13 +16,14 @@ import (
 )
 
 const (
-	TLSaddr     = ":443"
+	tlsAddr     = ":443"
 	addr        = ":80"
 	smtpAddr    = ":25"
 	pop3Addr    = ":110"
 	filename    = "messages.txt"
 	helpdekFile = "helpdesk.msgp"
 	emailFile   = "email.msgp"
+	staticDir   = "static"
 
 	tplHeader = `
 	<html>
@@ -39,6 +40,7 @@ const (
 			</style>
 		</head>
 		<body>
+			<script src="/static/js/main.js"></script>
 			<ol>
 				<li><a href="/">sms</a></li>
 				<li><a href="/helpdesk">helpdesk</a></li>
@@ -178,8 +180,8 @@ func main() {
 	smsRuRoutes(r, smsru)
 	helpdeskRoutes(r, hstor, sseNotifier)
 
-	log.Println("start HTTPS on", TLSaddr)
-	err = http.ListenAndServeTLS(TLSaddr, "cert/server.crt", "cert/server.key", r)
+	log.Println("start HTTPS on", tlsAddr)
+	err = http.ListenAndServeTLS(tlsAddr, "cert/server.crt", "cert/server.key", r)
 	if err != nil {
 		log.Println("TLS Web server fail:", err)
 	}
@@ -220,6 +222,8 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	})
 
 	r.Get("/events", sseNotification.ClientHandler())
+
+	fileServer(r, "/static", http.Dir(staticDir))
 
 	smsRuRoutes(r, smsru)
 	helpdeskRoutes(r, hstor, sseNotification)
@@ -305,5 +309,24 @@ func caselessMatcher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.ToLower(r.URL.Path)
 		next.ServeHTTP(w, r)
+	})
+}
+
+func fileServer(r chi.Router, path string, root http.FileSystem) {
+	if strings.ContainsAny(path, "{}*") {
+		panic("FileServer does not permit any URL parameters.")
+	}
+
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
+		rctx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
+		fs.ServeHTTP(w, r)
 	})
 }

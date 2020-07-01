@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	eventEmailRecived    = "emailrecived"
-	eventHelpdeskRecived = "helpdeskrecived"
-	eventSmsRecived      = "smsrecived"
+	eventEmailRecived    = "email"
+	eventHelpdeskRecived = "helpdesk"
+	eventSmsRecived      = "sms"
 )
 
 type Broker struct {
@@ -26,8 +26,8 @@ type Broker struct {
 }
 
 type message struct {
-	Event string
-	Data  string
+	Event string `json:"event"`
+	Data  string `json:"data"`
 }
 
 func NewBroker() *Broker {
@@ -88,7 +88,7 @@ func (b *Broker) ClientHandler() http.HandlerFunc {
 			if !ok {
 				break
 			}
-			_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", msg.Event, msg.Data)
+			_, err := fmt.Fprintf(w, "data: %v\n\n", msg)
 			if err != nil {
 				log.Printf("can not send event to client %v: %v", r.RemoteAddr, err)
 				break
@@ -126,4 +126,14 @@ func (b *Broker) listen() {
 			}
 		}
 	}
+}
+
+func (msg *message) String() string {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("can not marshal broker message: %v", err)
+		return "{}"
+	}
+
+	return string(data)
 }
