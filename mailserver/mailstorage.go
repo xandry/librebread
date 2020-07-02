@@ -14,15 +14,15 @@ import (
 )
 
 type MailMessage struct {
-	ID        int
-	MessageID string
-	SentOn    time.Time
-	RecivedOn time.Time
-	From      string
-	To        string
-	Subject   string
-	Body      string
-	Data      string
+	ID        int       `json:"id"`
+	MessageID string    `json:"message_id"`
+	SentOn    time.Time `json:"sent_on"`
+	RecivedOn time.Time `json:"recived_on"`
+	From      string    `json:"from"`
+	To        string    `json:"to"`
+	Subject   string    `json:"subject"`
+	Body      string    `json:"body"`
+	Data      string    `json:"data"`
 }
 
 type MailStorage struct {

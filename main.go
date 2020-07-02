@@ -45,7 +45,8 @@ const (
 				<li><a href="/">sms</a></li>
 				<li><a href="/helpdesk">helpdesk</a></li>
 				<li><a href="/email">email</a></li>
-			</ol>`
+			</ol>
+			<button onclick="Notification.requestPermission()">notifications</button>`
 
 	smsTableFooter = `</table>`
 

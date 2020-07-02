@@ -88,7 +88,7 @@ func (b *Broker) ClientHandler() http.HandlerFunc {
 			if !ok {
 				break
 			}
-			_, err := fmt.Fprintf(w, "data: %v\n\n", msg)
+			_, err := fmt.Fprintf(w, "data: %s\n\n", msg.String())
 			if err != nil {
 				log.Printf("can not send event to client %v: %v", r.RemoteAddr, err)
 				break
