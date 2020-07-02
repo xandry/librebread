@@ -5,11 +5,9 @@ function subscribeToEvents() {
   let eventSource = new EventSource(sseAddr)
 
   eventSource.onmessage = (event) => {
-    console.log(event.data)
-
     msg = JSON.parse(event.data)
 
-    if (!('event' in msg.event) || !supportedEvents.includes(msg.event)) {
+    if (!('event' in msg) || !supportedEvents.includes(msg.event)) {
       console.log('wrong message format:', msg)
       return
     }
@@ -23,17 +21,21 @@ function subscribeToEvents() {
 }
 
 function notification(msg) {
+  const data = JSON.parse(msg.data)
+
+  console.group(data)
+
   switch (msg.event) {
     case 'email':
-      notifyEmail(msg.data)
+      notifyEmail(data)
       break
 
     case 'helpdesk':
-      notifyHelpdesk(msg.data)
+      notifyHelpdesk(data)
       break
 
     case 'sms':
-      notifySMS(msg.data)
+      notifySMS(data)
       break
 
     default:
@@ -42,7 +44,7 @@ function notification(msg) {
 }
 
 function isNotificationAllowed() {
-  if (!('Notification' in window)) {
+  if (!('Notification' in this)) {
     console.error('This browser does not support desktop notification')
     return false
   }
@@ -51,7 +53,11 @@ function isNotificationAllowed() {
 }
 
 function notifyEmail(email) {
-  console.log(email)
+  const options = {
+    body: email.body
+  }
+  
+  new Notification('Email', options)
 }
 
 function notifyHelpdesk(helpdesk) {
