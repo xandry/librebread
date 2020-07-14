@@ -14,6 +14,13 @@ https://hub.docker.com/r/vasyahuyasa/librebread
 |------------------------|-------------|
 | `/`                    | index, sent messages |
 
+__LibeSMS__
+
+| URL                | DESCRIPTION |
+|--------------------|-------------|
+| `/libre/send`      | send sms    |
+| `/libew/check`     | not implemented |
+
 ### HTTPS 443 port
 
 __DevinoTelecom__
@@ -30,6 +37,13 @@ __SmsRU__
 |--------------------|-------------|
 | `/sms/user/send`   | send sms    |
 | `/sms/user/status` | messages status |
+
+__LibeSMS__
+
+| URL                | DESCRIPTION |
+|--------------------|-------------|
+| `/libre/send`      | send sms    |
+| `/libew/check`     | not implemented |
 
 ### SMTP 25 port
 

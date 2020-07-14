@@ -150,6 +150,11 @@ func main() {
 		Notifier: sseNotifier,
 	}
 
+	libreSMS := &sms.LibreBread{
+		Stor:     smsStor,
+		Notifier: sseNotifier,
+	}
+
 	// smtp
 	go func() {
 		smtpsrv := mailserver.NewSmtpServer(smtpAddr, mailStor, sseNotifier)
@@ -170,7 +175,7 @@ func main() {
 	}()
 
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS)
 	}()
 
 	// devino telecom mock server
@@ -179,6 +184,7 @@ func main() {
 
 	devinoTelecomRoutes(r, devino)
 	smsRuRoutes(r, smsru)
+	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotifier)
 
 	log.Println("start HTTPS on", tlsAddr)
@@ -208,12 +214,19 @@ func smsRuRoutes(mux *chi.Mux, smsru sms.SmsRu) {
 	})
 }
 
+func libreBreadSmsRoutes(mux *chi.Mux, libreSms *sms.LibreBread) {
+	mux.Route("/libre", func(r chi.Router) {
+		r.Post("/send", libreSms.Send)
+		r.Post("/check", libreSms.Check)
+	})
+}
+
 func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage, notifier helpdesk.HelpdeskNotifier) {
 	mux.Post("/api/v2/tickets/", helpdesk.HelpdeskEddyHandler(stor, notifier))
 }
 
 // sms.ru and stats server
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		r.Use(indexPageWrapper)
@@ -227,6 +240,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	fileServer(r, "/static", http.Dir(staticDir))
 
 	smsRuRoutes(r, smsru)
+	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotification)
 
 	log.Println("start HTTP on", addr)
