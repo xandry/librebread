@@ -6,6 +6,12 @@ Librebread is server for mock SMS sender services and smtp service for testing p
 
 https://hub.docker.com/r/vasyahuyasa/librebread
 
+## Environment config
+
+| Environment   | Default | Description  |
+|---------------|---------|--------------|
+| `DISABLE_TLS` | `0`     | DO not start HTTPS server on 403 port |
+
 ## API
 
 ### HTTP 80 port
