@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/go-chi/chi"
 	"github.com/vasyahuyasa/librebread/helpdesk"
@@ -100,6 +102,13 @@ func emailTableHeaderWithCount(count int) string {
 }
 
 func main() {
+	disableTLS := false
+
+	s := os.Getenv("DISABLE_TLS")
+	if s == "true" || s == "1" {
+		disableTLS = true
+	}
+
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0777)
 	if err != nil {
 		log.Fatal("can not open file:", err)
@@ -155,6 +164,9 @@ func main() {
 		Notifier: sseNotifier,
 	}
 
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
 	// smtp
 	go func() {
 		smtpsrv := mailserver.NewSmtpServer(smtpAddr, mailStor, sseNotifier)
@@ -187,11 +199,20 @@ func main() {
 	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotifier)
 
-	log.Println("start HTTPS on", tlsAddr)
-	err = http.ListenAndServeTLS(tlsAddr, "cert/server.crt", "cert/server.key", r)
-	if err != nil {
-		log.Println("TLS Web server fail:", err)
-	}
+	go func() {
+		if disableTLS {
+			return
+		}
+
+		log.Println("start HTTPS on", tlsAddr)
+		err = http.ListenAndServeTLS(tlsAddr, "cert/server.crt", "cert/server.key", r)
+		if err != nil {
+			log.Println("TLS Web server fail:", err)
+		}
+	}()
+
+	<-done
+	log.Println("Server Stopped")
 }
 
 func devinoTelecomRoutes(r chi.Router, devino sms.Devino) {
