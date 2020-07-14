@@ -16,9 +16,17 @@ https://hub.docker.com/r/vasyahuyasa/librebread
 
 ### HTTP 80 port
 
-| URL                    | DESCRIPTION |
-|------------------------|-------------|
-| `/`                    | index, sent messages |
+#### URL params
+
+`/?json=1` - JSON rsponse format
+
+`/?limit=50` - Limit of messages, default `50`
+
+| URL                    | DESCRIPTION    |
+|------------------------|----------------|
+| `/`                    | SMS messages   |
+| `/helpdesk`            | Helpdesk eddy  |
+| `/email`               | Email messages |
 
 __LibeSMS__
 

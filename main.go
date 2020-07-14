@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -273,9 +275,35 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 
 func indexSmsHandler(stor *sms.Storage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		str_lim := r.FormValue("limit")
+		lim := 50
+
+		var err error
+		if str_lim != "" {
+			lim, err = strconv.Atoi(str_lim)
+			if err != nil {
+				log.Printf("can not parse limit param: %v", err)
+				http.Error(w, fmt.Sprintf("can not parse limit param: %v", err), http.StatusBadRequest)
+				return
+			}
+		}
+
+		messages := stor.LastMessages(lim)
+
+		// special case for Json
+		if isJson(r) {
+			enc := json.NewEncoder(w)
+
+			err := enc.Encode(messages)
+			if err != nil {
+				log.Printf("sms: can not send json to client: %v", err)
+			}
+			return
+		}
+
 		b := strings.Builder{}
 		b.WriteString(smsTableHeaderWithCount(stor.Len()))
-		for _, msg := range stor.LastMessages(50) {
+		for _, msg := range messages {
 			b.WriteString("<tr>" +
 				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
 				"<td>" + msg.From + "</td>" +
@@ -285,7 +313,7 @@ func indexSmsHandler(stor *sms.Storage) func(w http.ResponseWriter, r *http.Requ
 				"</tr>")
 		}
 		b.WriteString(smsTableFooter)
-		_, err := w.Write([]byte(b.String()))
+		_, err = w.Write([]byte(b.String()))
 		if err != nil {
 			log.Printf("can not send index to client: %v", err)
 		}
@@ -334,9 +362,14 @@ func emailIndexHandler(stor *mailserver.MailStorage) func(w http.ResponseWriter,
 
 func indexPageWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, tplHeader)
-		next.ServeHTTP(w, r)
-		fmt.Fprint(w, tplFooter)
+		if isJson(r) {
+			next.ServeHTTP(w, r)
+		} else {
+			fmt.Fprint(w, tplHeader)
+			next.ServeHTTP(w, r)
+			fmt.Fprint(w, tplFooter)
+		}
+
 	})
 }
 
@@ -365,4 +398,10 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func isJson(r *http.Request) bool {
+	s := strings.ToLower(r.FormValue("json"))
+
+	return s == "1" || s == "true" || s == "yes"
 }
