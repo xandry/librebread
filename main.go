@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
 	"github.com/vasyahuyasa/librebread/sms"
@@ -105,6 +106,8 @@ func emailTableHeaderWithCount(count int) string {
 
 func main() {
 	disableTLS := false
+	user := os.Getenv("USER")
+	password := os.Getenv("PASSWORD")
 
 	s := os.Getenv("DISABLE_TLS")
 	if s == "true" || s == "1" {
@@ -189,7 +192,7 @@ func main() {
 	}()
 
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password)
 	}()
 
 	// devino telecom mock server
@@ -249,9 +252,12 @@ func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage, notifier helpd
 }
 
 // sms.ru and stats server
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
+		if user != "" && password != "" {
+			r.Use(middleware.BasicAuth("LibreBread", map[string]string{user: password}))
+		}
 		r.Use(indexPageWrapper)
 		r.Get("/", indexSmsHandler(stor))
 		r.Get("/helpdesk", helpdeskIndexHandler(hstor))

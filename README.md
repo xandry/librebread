@@ -11,6 +11,8 @@ https://hub.docker.com/r/vasyahuyasa/librebread
 | Environment   | Default | Description  |
 |---------------|---------|--------------|
 | `DISABLE_TLS` | `0`     | DO not start HTTPS server on 403 port |
+| `USER`        |         | Basic auth login, password must specified too |
+| `PASSWORD`    |         | Basic auth password |
 
 ## API
 
