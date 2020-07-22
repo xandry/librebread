@@ -3,9 +3,6 @@ package web
 import (
 	"context"
 	"net/http"
-
-	"github.com/go-chi/chi"
-	"github.com/vasyahuyasa/librebread/sms"
 )
 
 type Server struct {
@@ -13,24 +10,14 @@ type Server struct {
 	//TLSCert   string
 	//TLSKey    string
 
-	smsStore *sms.SqliteStorage
-	http     *http.Server
-	handler  http.Handler
-	re       *renderer
+	http *http.Server
 }
 
-func NewServer(smsStore *sms.SqliteStorage) *Server {
+func NewServer(h http.Handler) *Server {
 
-	s := &Server{
-		smsStore: smsStore,
-		re:       newRenderer(),
+	return &Server{
+		http: &http.Server{Handler: h},
 	}
-
-	s.initRoutes()
-
-	s.http = &http.Server{Handler: s.handler}
-
-	return s
 }
 
 func (s *Server) ListenAndServe() error {
@@ -40,13 +27,4 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.http.Shutdown(ctx)
-}
-
-func (s *Server) initRoutes() {
-	r := chi.NewMux()
-
-	r.Get("/", redirect("/sms", http.StatusTemporaryRedirect))
-	r.Get("/sms", smsIndexHandler(s.smsStore, s.re))
-
-	s.handler = r
 }

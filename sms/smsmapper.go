@@ -5,22 +5,23 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	uuid "github.com/satori/go.uuid"
+	"github.com/vasyahuyasa/librebread/api"
 )
 
-type SqliteStorage struct {
-	uuid uuid.UUID
-	db   *sqlx.DB
+type SMSMapper struct {
+	//uuid uuid.UUID
+	db *sqlx.DB
 }
 
-func NewSqliteStorage(db *sqlx.DB) *SqliteStorage {
-	return &SqliteStorage{
-		uuid: uuid.NewV4(),
-		db:   db,
+func NewSMSMapper(db *sqlx.DB) *SMSMapper {
+	return &SMSMapper{
+		//uuid: uuid.NewV4(),
+		db: db,
 	}
 }
 
-func (s *SqliteStorage) Insert(m Message) error {
+/*
+func (s *SMSMapper) Insert(m Message) error {
 	q := "INSERT INTO `sms_messages` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
 	_, err := s.db.Exec(q, m.ID, m.Time, m.From, m.To, m.Text, m.Provider)
 	if err != nil {
@@ -29,8 +30,10 @@ func (s *SqliteStorage) Insert(m Message) error {
 
 	return nil
 }
+*/
 
-func (s *SqliteStorage) Total() (int64, error) {
+/*
+func (s *SMSMapper) Total() (int64, error) {
 	var count int64
 	q := "SELECT count(*) FROM `sms_messages`"
 
@@ -41,8 +44,9 @@ func (s *SqliteStorage) Total() (int64, error) {
 
 	return count, nil
 }
+*/
 
-func (s *SqliteStorage) LastMessages(limit int64) ([]Message, error) {
+func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
 
 	q := "SELECT `id`, `time`, `from`, `to`, `text`, `provider` FROM `sms_messages` ORDER BY `time` DESC LIMIT ?"
 	rows, err := s.db.Query(q, limit)
@@ -52,7 +56,7 @@ func (s *SqliteStorage) LastMessages(limit int64) ([]Message, error) {
 
 	defer rows.Close()
 
-	var messages []Message
+	var smses api.SMSes
 
 	for rows.Next() {
 		var id string
@@ -64,10 +68,10 @@ func (s *SqliteStorage) LastMessages(limit int64) ([]Message, error) {
 
 		err = rows.Scan(&id, &time, &from, &to, &text, &provider)
 		if err != nil {
-			return nil, fmt.Errorf("can not red row: v", err)
+			return nil, fmt.Errorf("can not red row: %v", err)
 		}
 
-		messages = append(messages, Message{
+		smses = append(smses, api.SMS{
 			ID:       id,
 			Time:     time,
 			From:     from,
@@ -77,9 +81,11 @@ func (s *SqliteStorage) LastMessages(limit int64) ([]Message, error) {
 		})
 	}
 
-	return messages, nil
+	return smses, nil
 }
 
-func (s *SqliteStorage) GenID() string {
+/*
+func (s *SMSMapper) GenID() string {
 	return s.uuid.String()
 }
+*/

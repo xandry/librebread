@@ -1,11 +1,9 @@
-package web
+package api
 
 import (
 	"html/template"
 	"log"
 	"net/http"
-
-	"github.com/vasyahuyasa/librebread/sms"
 )
 
 type renderer struct {
@@ -34,6 +32,6 @@ func parseTemplates(name string, tmpls ...string) *template.Template {
 	return t
 }
 
-func (re *renderer) renderSms(w http.ResponseWriter, messages []sms.Message) error {
-	return re.smsTpl.Execute(w, messages)
+func (re *renderer) renderSms(w http.ResponseWriter, smses SMSes) error {
+	return re.smsTpl.Execute(w, smses)
 }

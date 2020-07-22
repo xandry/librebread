@@ -1,4 +1,4 @@
-package web
+package api
 
 const baseTmpl = `
 	{{define "base"}}

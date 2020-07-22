@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/vasyahuyasa/librebread/api"
 	"github.com/vasyahuyasa/librebread/sms"
 	"github.com/vasyahuyasa/librebread/web"
 )
@@ -20,9 +21,12 @@ func (app *Application) Run() error {
 	}
 	defer db.Close()
 
-	smsStore := sms.NewSqliteStorage(db)
+	smsMapper := sms.NewSMSMapper(db)
 
-	srv := web.NewServer(smsStore)
+	l := api.NewLibrebread(smsMapper)
+	h := api.Handler(l)
+
+	srv := web.NewServer(h)
 
 	err = srv.ListenAndServe()
 	if err != nil {

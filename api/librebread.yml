@@ -1,0 +1,69 @@
+openapi: 3.0.0
+info:
+  title: LibreBread API
+  version: 0.0.1
+paths:
+  /:
+    get:
+      responses:
+        '302':
+          description: Redirect to sms handler
+          headers:
+            Location:
+              type: string
+  /sms:
+    get:
+      summary: Returns a list of SMS.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int64
+            default: 50
+          description: The number of latest sms
+        - in: query
+          name: json
+          schema:
+            type: boolean
+          description: Should be JSON response
+      responses:
+        '200':
+          description: A array of SMS
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SMSes'
+            text/html:
+              schema:
+                type: string
+components:
+  schemas:
+    SMS:
+      type: object
+      required:
+        - ID
+        - Time
+        - From
+        - To
+        - Text
+        - Provider
+      properties:
+        ID:
+          type: string
+          format: uuid
+        Time:
+          type: string
+          format: date-time
+        From:
+          type: string
+        To:
+          type: string
+        Text:
+          type: string
+        Provider:
+          type: string
+    SMSes:
+      type: array
+      items:
+        $ref: '#/components/schemas/SMS'
