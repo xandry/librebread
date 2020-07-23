@@ -37,6 +37,53 @@ paths:
             text/html:
               schema:
                 type: string
+        '500':
+          description: Internal error ocured
+          content:
+            text/plain:
+              schema:
+                type: string
+  /libre/send:
+    post:
+      summary: Send the fake SMS
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - from
+                - to
+                - text
+              properties:
+                from:
+                  type: string
+                to:
+                  type: string
+                text:
+                  type: string
+      responses:
+        '200':
+          description: List of message ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibreBreadSMSIds'
+        '400':
+          description: Some filed is missed
+        '500':
+          description: Internal error ocured
+          content:
+            text/plain:
+              schema:
+                type: string
+  /libre/check:
+    post:
+      description: Not implemented
+      responses:
+        '501':
+          description: Not implemented
 components:
   schemas:
     SMS:
@@ -67,3 +114,9 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/SMS'
+    LibreBreadSMSIds:
+      type: array
+      items:
+        type: string
+        format: uuid
+      

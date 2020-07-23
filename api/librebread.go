@@ -11,6 +11,7 @@ import (
 
 type smser interface {
 	LastMessages(limit int64) (SMSes, error)
+	Create(from, to, text, provider string) (string, error)
 }
 
 type LibreBread struct {
@@ -72,4 +73,42 @@ func (lb *LibreBread) GetSms(w http.ResponseWriter, r *http.Request, params GetS
 		http.Error(w, fmt.Sprintf("can not render messages: %v", err), http.StatusInternalServerError)
 		log.Printf("can not render messages: %v", err)
 	}
+}
+
+func (lb *LibreBread) PostLibreSend(w http.ResponseWriter, r *http.Request) {
+	from := r.FormValue("from")
+	if from == "" {
+		http.Error(w, "from param is required", http.StatusBadRequest)
+		return
+	}
+
+	to := r.FormValue("to")
+	if to == "" {
+		http.Error(w, "to param is required", http.StatusBadRequest)
+		return
+	}
+
+	text := r.FormValue("text")
+	if text == "" {
+		http.Error(w, "text param is required", http.StatusBadRequest)
+		return
+	}
+
+	id, err := lb.sms.Create(from, to, text, "LibreSMS")
+	if err != nil {
+		log.Printf("can not create libre SMS: %v", err)
+		http.Error(w, fmt.Sprintf("can not create libre SMS: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	response := LibreBreadSMSIds{id}
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		log.Printf("can send response to client: %v", err)
+	}
+}
+
+func (lb *LibreBread) PostLibreCheck(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 }

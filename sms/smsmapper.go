@@ -5,32 +5,32 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	uuid "github.com/satori/go.uuid"
 	"github.com/vasyahuyasa/librebread/api"
 )
 
 type SMSMapper struct {
-	//uuid uuid.UUID
 	db *sqlx.DB
 }
 
 func NewSMSMapper(db *sqlx.DB) *SMSMapper {
 	return &SMSMapper{
-		//uuid: uuid.NewV4(),
 		db: db,
 	}
 }
 
-/*
-func (s *SMSMapper) Insert(m Message) error {
+func (s *SMSMapper) Create(from, to, text, provider string) (string, error) {
+	id := genID()
+	now := time.Now()
+
 	q := "INSERT INTO `sms_messages` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
-	_, err := s.db.Exec(q, m.ID, m.Time, m.From, m.To, m.Text, m.Provider)
+	_, err := s.db.Exec(q, id, now, from, to, text, provider)
 	if err != nil {
-		return fmt.Errorf("can not insert sms message: %w", err)
+		return "", fmt.Errorf("can not insert sms message: %w", err)
 	}
 
-	return nil
+	return id, nil
 }
-*/
 
 /*
 func (s *SMSMapper) Total() (int64, error) {
@@ -84,8 +84,6 @@ func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
 	return smses, nil
 }
 
-/*
-func (s *SMSMapper) GenID() string {
-	return s.uuid.String()
+func genID() string {
+	return uuid.NewV4().String()
 }
-*/

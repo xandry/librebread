@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// LibreBreadSMSIds defines model for LibreBreadSMSIds.
+type LibreBreadSMSIds []string
+
 // SMS defines model for SMS.
 type SMS struct {
 	From     string    `json:"From"`
@@ -39,6 +42,12 @@ type ServerInterface interface {
 
 	// (GET /)
 	Get(w http.ResponseWriter, r *http.Request)
+
+	// (POST /libre/check)
+	PostLibreCheck(w http.ResponseWriter, r *http.Request)
+	// Send the fake SMS
+	// (POST /libre/send)
+	PostLibreSend(w http.ResponseWriter, r *http.Request)
 	// Returns a list of SMS.
 	// (GET /sms)
 	GetSms(w http.ResponseWriter, r *http.Request, params GetSmsParams)
@@ -54,6 +63,20 @@ func (siw *ServerInterfaceWrapper) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	siw.Handler.Get(w, r.WithContext(ctx))
+}
+
+// PostLibreCheck operation middleware
+func (siw *ServerInterfaceWrapper) PostLibreCheck(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	siw.Handler.PostLibreCheck(w, r.WithContext(ctx))
+}
+
+// PostLibreSend operation middleware
+func (siw *ServerInterfaceWrapper) PostLibreSend(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	siw.Handler.PostLibreSend(w, r.WithContext(ctx))
 }
 
 // GetSms operation middleware
@@ -103,6 +126,12 @@ func HandlerFromMux(si ServerInterface, r chi.Router) http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Get("/", wrapper.Get)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post("/libre/check", wrapper.PostLibreCheck)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post("/libre/send", wrapper.PostLibreSend)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get("/sms", wrapper.GetSms)
