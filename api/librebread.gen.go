@@ -42,6 +42,9 @@ type ServerInterface interface {
 
 	// (GET /)
 	Get(w http.ResponseWriter, r *http.Request)
+	// Create HelpdeskEddy ticket
+	// (POST /api/v2/tickets)
+	PostHelpdeskEddyTicket(w http.ResponseWriter, r *http.Request)
 
 	// (POST /libre/check)
 	PostLibreCheck(w http.ResponseWriter, r *http.Request)
@@ -63,6 +66,13 @@ func (siw *ServerInterfaceWrapper) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	siw.Handler.Get(w, r.WithContext(ctx))
+}
+
+// PostHelpdeskEddyTicket operation middleware
+func (siw *ServerInterfaceWrapper) PostHelpdeskEddyTicket(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	siw.Handler.PostHelpdeskEddyTicket(w, r.WithContext(ctx))
 }
 
 // PostLibreCheck operation middleware
@@ -126,6 +136,9 @@ func HandlerFromMux(si ServerInterface, r chi.Router) http.Handler {
 
 	r.Group(func(r chi.Router) {
 		r.Get("/", wrapper.Get)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post("/api/v2/tickets", wrapper.PostHelpdeskEddyTicket)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post("/libre/check", wrapper.PostLibreCheck)
