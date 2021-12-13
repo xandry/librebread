@@ -23,7 +23,7 @@ func (s *SMSMapper) Create(from, to, text, provider string) (string, error) {
 	id := genID()
 	now := time.Now()
 
-	q := "INSERT INTO `sms_messages` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
+	q := "INSERT INTO `sms` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
 	_, err := s.db.Exec(q, id, now, from, to, text, provider)
 	if err != nil {
 		return "", fmt.Errorf("can not insert sms message: %w", err)
@@ -48,7 +48,7 @@ func (s *SMSMapper) Total() (int64, error) {
 
 func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
 
-	q := "SELECT `id`, `time`, `from`, `to`, `text`, `provider` FROM `sms_messages` ORDER BY `time` DESC LIMIT ?"
+	q := "SELECT `id`, `time`, `from`, `to`, `text`, `provider` FROM `sms` ORDER BY `time` DESC LIMIT ?"
 	rows, err := s.db.Query(q, limit)
 	if err != nil {
 		return nil, fmt.Errorf("can not select %d last messages: %v", limit, err)

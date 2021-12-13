@@ -85,6 +85,46 @@ paths:
       responses:
         '501':
           description: Not implemented
+  /api/v2/tickets:
+    post:
+      operationId: PostHelpdeskEddyTicket
+      summary: Create HelpdeskEddy ticket
+      description: Create HelpdeskEddy ticket
+      requestBody:
+        required: true
+        content:
+        application/x-www-form-urlencoded:
+          schema:
+            type: object
+            required:
+              - title
+              - description
+            properties:
+              type_id:
+                type: integer
+              priority_id:
+                type: integer
+              department_id:
+                type: integer
+              title:
+                type: string
+              description:
+                type: string
+      responses:
+        '200':
+          description: Ticket succesfuly created
+        '400':
+          description: One of required fileds is missed
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Internal error ocured
+          content:
+            text/plain:
+              schema:
+                type: string
 components:
   schemas:
     SMS:
@@ -120,4 +160,3 @@ components:
       items:
         type: string
         format: uuid
-      

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type smser interface {
@@ -14,15 +15,21 @@ type smser interface {
 	Create(from, to, text, provider string) (string, error)
 }
 
-type LibreBread struct {
-	sms smser
-	re  *renderer
+type ticketer interface {
+	Create(title, description string, typeID, priorityID, departmentID int) error
 }
 
-func NewLibrebread(sms smser) *LibreBread {
+type LibreBread struct {
+	sms    smser
+	ticket ticketer
+	re     *renderer
+}
+
+func NewLibrebread(sms smser, ticket ticketer) *LibreBread {
 	return &LibreBread{
-		sms: sms,
-		re:  newRenderer(),
+		sms:    sms,
+		ticket: ticket,
+		re:     newRenderer(),
 	}
 }
 
@@ -111,4 +118,32 @@ func (lb *LibreBread) PostLibreSend(w http.ResponseWriter, r *http.Request) {
 
 func (lb *LibreBread) PostLibreCheck(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
+}
+
+func (lb *LibreBread) PostHelpdeskEddyTicket(w http.ResponseWriter, r *http.Request) {
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	if title == "" || description == "" {
+		http.Error(w, "title and description required", http.StatusBadRequest)
+		return
+	}
+
+	typeID := atoi(r.FormValue("type_id"))
+	priorityID := atoi(r.FormValue("priority_id"))
+	departmentID := atoi(r.FormValue("department_id"))
+
+	err := lb.ticket.Create(title, description, typeID, priorityID, departmentID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("can not create HelpdeskEddy ticket: %v", err), http.StatusInternalServerError)
+		log.Printf("can not create HelpdeskEddy ticket: %v", err)
+		return
+	}
+
+	log.Printf("HelpdeskEddy ticket created")
+}
+
+func atoi(str string) int {
+	v, _ := strconv.Atoi(str)
+	return v
 }
