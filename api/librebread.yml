@@ -10,7 +10,8 @@ paths:
           description: Redirect to sms handler
           headers:
             Location:
-              type: string
+              schema:
+                type: string
   /sms:
     get:
       summary: Returns a list of SMS.
