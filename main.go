@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
+	"github.com/vasyahuyasa/librebread/push"
 	"github.com/vasyahuyasa/librebread/sms"
 	"github.com/vasyahuyasa/librebread/ssenotifier"
 )
@@ -50,6 +51,7 @@ const (
 				<li><a href="/">sms</a></li>
 				<li><a href="/helpdesk">helpdesk</a></li>
 				<li><a href="/email">email</a></li>
+				<li><a href="/push">push</a></li>
 			</ol>
 			<button onclick="Notification.requestPermission()">notifications</button>`
 
@@ -58,6 +60,8 @@ const (
 	helpdeskTableFooter = `</table>`
 
 	emailTableFooter = `</table>`
+
+	pushTableFooter = `</table>`
 
 	tplFooter = `</body></html>`
 )
@@ -101,6 +105,19 @@ func emailTableHeaderWithCount(count int) string {
 			<th>To</th>
 			<th>Subject</th>
 			<th>Data</th>
+		</thead>`, count)
+}
+
+func pushTableHeaderWithCount(count int) string {
+	return fmt.Sprintf(`
+	<table border=1>
+		<caption>Push (%d)</caption>
+		<thead>
+			<th>ID</th>
+			<th>Time</th>
+			<th>Push service</th>
+			<th>Data</th>
+			<th>Tokens</th>
 		</thead>`, count)
 }
 
@@ -191,8 +208,13 @@ func main() {
 		}
 	}()
 
+	// push
+	pushStorage := push.NewMemoryStorage()
+	librePush := push.NewLibrePush(pushStorage)
+	libreBreadHandler := push.NewLibreBreadHandler(librePush)
+
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage)
 	}()
 
 	// devino telecom mock server
@@ -251,8 +273,11 @@ func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage, notifier helpd
 	mux.Post("/api/v2/tickets/", helpdesk.HelpdeskEddyHandler(stor, notifier))
 }
 
-// sms.ru and stats server
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string) {
+func libreBreadPushRoutes(mux *chi.Mux, h *push.LibreBreadHandler) {
+	mux.Post("/push", h.HandlePush)
+}
+
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		if user != "" && password != "" {
@@ -262,6 +287,8 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 		r.Get("/", indexSmsHandler(stor))
 		r.Get("/helpdesk", helpdeskIndexHandler(hstor))
 		r.Get("/email", emailIndexHandler(mailStor))
+		r.Get("/push", pushIndexHandler(pushStore))
+		r.Get("/push/{id}", pushByIDHandler(pushStore))
 	})
 
 	r.Get("/events", sseNotification.ClientHandler())
@@ -271,6 +298,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	smsRuRoutes(r, smsru)
 	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotification)
+	libreBreadPushRoutes(r, libreBreadhandler)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
@@ -366,6 +394,130 @@ func emailIndexHandler(stor *mailserver.MailStorage) func(w http.ResponseWriter,
 	}
 }
 
+func pushIndexHandler(store push.Storage) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b := strings.Builder{}
+
+		messages, err := store.AllMessages()
+		if err != nil {
+			log.Printf("cannot get stored messages: %v", err)
+			_, err := fmt.Fprintf(w, "cannot get stored messages: %v", err)
+			if err != nil {
+				log.Printf("can not send error `response to client: %v", err)
+			}
+			return
+		}
+
+		b.WriteString(pushTableHeaderWithCount(len(messages)))
+		for _, msg := range messages {
+			shortMsg := struct {
+				ID           int64             `json:"id"`
+				PushService  string            `json:"push_service"`
+				Title        string            `json:"title"`
+				Text         string            `json:"text"`
+				Data         map[string]string `json:"data,omitempty"`
+				TTL          int64             `json:"ttl"`
+				ValidateOnly bool              `json:"validate_only"`
+			}{
+				ID:           msg.Msg.ID,
+				PushService:  msg.Msg.PushService,
+				Title:        msg.Msg.Title,
+				Text:         msg.Msg.Text,
+				Data:         msg.Msg.Data,
+				TTL:          msg.Msg.TTL,
+				ValidateOnly: msg.Msg.ValidateOnly,
+			}
+
+			beautyMsg, err := json.MarshalIndent(shortMsg, "", "  ")
+			if err != nil {
+				log.Printf("cannot marshal message %v: %v", shortMsg, err)
+				_, err := fmt.Fprintf(w, "cannot marshal message %v: %v", shortMsg, err)
+				if err != nil {
+					log.Printf("can not send error response to client: %v", err)
+				}
+				return
+			}
+
+			b.WriteString("<tr>" +
+				"<td>" + html.EscapeString(msg.ID) + "</td>" +
+				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
+				"<td>" + html.EscapeString(msg.Msg.PushService) + "</td>" +
+				"<td><pre>" + html.EscapeString(string(beautyMsg)) + "</pre></td>" +
+				"<td><a href=\"\\push\\" + msg.ID + "\"> view (" + strconv.Itoa(len(msg.Msg.Tokens)) + ")</a></td>" +
+				"</tr>")
+		}
+		b.WriteString(pushTableFooter)
+		_, err = w.Write([]byte(b.String()))
+		if err != nil {
+			log.Printf("can not send push index to client: %v", err)
+		}
+	}
+}
+
+func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+
+		msg, err := store.ByID(id)
+		if err != nil {
+			log.Printf("cannot display push %s: %v", id, err)
+			_, err := fmt.Fprintf(w, "<p>cannot display push %s: %v</p>", id, err)
+			if err != nil {
+				log.Printf("cannot send error response to client: %v", err)
+			}
+			return
+		}
+
+		b := strings.Builder{}
+
+		shortMsg := struct {
+			ID           int64             `json:"id"`
+			PushService  string            `json:"push_service"`
+			Title        string            `json:"title"`
+			Text         string            `json:"text"`
+			Data         map[string]string `json:"data,omitempty"`
+			TTL          int64             `json:"ttl"`
+			ValidateOnly bool              `json:"validate_only"`
+		}{
+			ID:           msg.Msg.ID,
+			PushService:  msg.Msg.PushService,
+			Title:        msg.Msg.Title,
+			Text:         msg.Msg.Text,
+			Data:         msg.Msg.Data,
+			TTL:          msg.Msg.TTL,
+			ValidateOnly: msg.Msg.ValidateOnly,
+		}
+
+		beautyMsg, err := json.MarshalIndent(shortMsg, "", "  ")
+		if err != nil {
+			log.Printf("cannot marshal message %v: %v", shortMsg, err)
+			_, err := fmt.Fprintf(w, "cannot marshal message %v: %v", shortMsg, err)
+			if err != nil {
+				log.Printf("can not send error response to client: %v", err)
+			}
+			return
+		}
+
+		b.WriteString(fmt.Sprintf(`
+		<p><b>ID</b>: %s</p>
+		<p><b>Time</b>: %s</p>
+		<p><b>Push service</b>: %s</p>
+		<p><b>Data</b>: <pre>%s</pre></p>
+		<p><b>Tokens</b>: %s</p>`,
+			html.EscapeString(msg.ID),
+			msg.Time.Format("2006-01-02 15:04:05"),
+			html.EscapeString(msg.Msg.PushService),
+			html.EscapeString(string(beautyMsg)),
+			html.EscapeString(strings.Join(msg.Msg.Tokens, ",")),
+		))
+
+		_, err = w.Write([]byte(b.String()))
+		if err != nil {
+			log.Printf("can not send push %s to client: %v", id, err)
+		}
+	}
+}
+
 func indexPageWrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isJson(r) {
@@ -393,7 +545,7 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 	}
 
 	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
 		path += "/"
 	}
 	path += "*"
