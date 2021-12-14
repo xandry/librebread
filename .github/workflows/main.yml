@@ -6,11 +6,11 @@ on:
       - master
 
 jobs:
-  build:
+  build_push_github:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: build and publish to docker registry
+    - name: build and publish to github docker registry
       run: |
         PROJECT_NAME=`echo ${{ github.repository }} | sed 's/\(.*\)\///'`
         TAG=docker.pkg.github.com/${{ github.repository }}/${PROJECT_NAME}:latest
@@ -18,3 +18,18 @@ jobs:
         docker login docker.pkg.github.com -u vasyahuyasa -p ${{ secrets.GITHUB_TOKEN }}
         docker build . -t ${TAG}
         docker push ${TAG}
+  build_push_dockerhub:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - name: build and publish to dockerhub registry
+      run: |
+        IMAGE_NAME=vasyahuyasa/librebread
+        docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+        docker build -t ${IMAGE_NAME}:latest .
+        docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:${{steps.get_version.outputs.VERSION}}
+        docker push ${IMAGE_NAME}:latest
+        docker push ${IMAGE_NAME}:${{steps.get_version.outputs.VERSION}}
