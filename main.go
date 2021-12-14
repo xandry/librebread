@@ -115,7 +115,7 @@ func pushTableHeaderWithCount(count int) string {
 		<thead>
 			<th>ID</th>
 			<th>Time</th>
-			<th>Provider</th>
+			<th>Push service</th>
 			<th>Data</th>
 			<th>Tokens</th>
 		</thead>`, count)
@@ -274,10 +274,7 @@ func helpdeskRoutes(mux *chi.Mux, stor *helpdesk.HelpdeskStorage, notifier helpd
 }
 
 func libreBreadPushRoutes(mux *chi.Mux, h *push.LibreBreadHandler) {
-	mux.Route("/librepush/v1/{provider}", func(r chi.Router) {
-		r.Post("/messages:send", h.HandleSend)
-		r.Post("/messages:dryrun", h.HandleSendDryRun)
-	})
+	mux.Post("/push", h.HandlePush)
 }
 
 func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage) {
@@ -414,17 +411,21 @@ func pushIndexHandler(store push.Storage) func(w http.ResponseWriter, r *http.Re
 		b.WriteString(pushTableHeaderWithCount(len(messages)))
 		for _, msg := range messages {
 			shortMsg := struct {
-				ID    int64             `json:"id"`
-				Title string            `json:"title"`
-				Text  string            `json:"text"`
-				Data  map[string]string `json:"data"`
-				TTL   int64             `json:"ttl"`
+				ID           int64             `json:"id"`
+				PushService  string            `json:"push_service"`
+				Title        string            `json:"title"`
+				Text         string            `json:"text"`
+				Data         map[string]string `json:"data,omitempty"`
+				TTL          int64             `json:"ttl"`
+				ValidateOnly bool              `json:"validate_only"`
 			}{
-				ID:    msg.Msg.ID,
-				Title: msg.Msg.Title,
-				Text:  msg.Msg.Text,
-				Data:  msg.Msg.Data,
-				TTL:   msg.Msg.TTL,
+				ID:           msg.Msg.ID,
+				PushService:  msg.Msg.PushService,
+				Title:        msg.Msg.Title,
+				Text:         msg.Msg.Text,
+				Data:         msg.Msg.Data,
+				TTL:          msg.Msg.TTL,
+				ValidateOnly: msg.Msg.ValidateOnly,
 			}
 
 			beautyMsg, err := json.MarshalIndent(shortMsg, "", "  ")
@@ -440,9 +441,9 @@ func pushIndexHandler(store push.Storage) func(w http.ResponseWriter, r *http.Re
 			b.WriteString("<tr>" +
 				"<td>" + html.EscapeString(msg.ID) + "</td>" +
 				"<td>" + msg.Time.Format("2006-01-02 15:04:05") + "</td>" +
-				"<td>" + html.EscapeString(msg.Provider) + "</td>" +
+				"<td>" + html.EscapeString(msg.Msg.PushService) + "</td>" +
 				"<td><pre>" + html.EscapeString(string(beautyMsg)) + "</pre></td>" +
-				"<td><a href=\"\\push\\" + msg.ID + "\">" + strconv.Itoa(len(msg.Msg.Tokens)) + "</a></td>" +
+				"<td><a href=\"\\push\\" + msg.ID + "\"> view (" + strconv.Itoa(len(msg.Msg.Tokens)) + ")</a></td>" +
 				"</tr>")
 		}
 		b.WriteString(pushTableFooter)
@@ -470,17 +471,21 @@ func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Req
 		b := strings.Builder{}
 
 		shortMsg := struct {
-			ID    int64             `json:"id"`
-			Title string            `json:"title"`
-			Text  string            `json:"text"`
-			Data  map[string]string `json:"data"`
-			TTL   int64             `json:"ttl"`
+			ID           int64             `json:"id"`
+			PushService  string            `json:"push_service"`
+			Title        string            `json:"title"`
+			Text         string            `json:"text"`
+			Data         map[string]string `json:"data,omitempty"`
+			TTL          int64             `json:"ttl"`
+			ValidateOnly bool              `json:"validate_only"`
 		}{
-			ID:    msg.Msg.ID,
-			Title: msg.Msg.Title,
-			Text:  msg.Msg.Text,
-			Data:  msg.Msg.Data,
-			TTL:   msg.Msg.TTL,
+			ID:           msg.Msg.ID,
+			PushService:  msg.Msg.PushService,
+			Title:        msg.Msg.Title,
+			Text:         msg.Msg.Text,
+			Data:         msg.Msg.Data,
+			TTL:          msg.Msg.TTL,
+			ValidateOnly: msg.Msg.ValidateOnly,
 		}
 
 		beautyMsg, err := json.MarshalIndent(shortMsg, "", "  ")
@@ -496,12 +501,12 @@ func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Req
 		b.WriteString(fmt.Sprintf(`
 		<p><b>ID</b>: %s</p>
 		<p><b>Time</b>: %s</p>
-		<p><b>Provider</b>: %s</p>
+		<p><b>Push service</b>: %s</p>
 		<p><b>Data</b>: <pre>%s</pre></p>
 		<p><b>Tokens</b>: %s</p>`,
 			html.EscapeString(msg.ID),
 			msg.Time.Format("2006-01-02 15:04:05"),
-			html.EscapeString(msg.Provider),
+			html.EscapeString(msg.Msg.PushService),
 			html.EscapeString(string(beautyMsg)),
 			html.EscapeString(strings.Join(msg.Msg.Tokens, ",")),
 		))

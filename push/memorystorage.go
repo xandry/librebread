@@ -11,10 +11,9 @@ import (
 var ErrMessageNotFound = errors.New("message not found in store")
 
 type SentMessage struct {
-	ID       string
-	Time     time.Time
-	Provider string
-	Msg      BatchMessage
+	ID   string
+	Time time.Time
+	Msg  BatchMessage
 }
 
 type MemoryStorage struct {
@@ -37,17 +36,16 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-func (store *MemoryStorage) AddBatchMessage(provider string, msg BatchMessage) error {
+func (store *MemoryStorage) AddBatchMessage(msg BatchMessage) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	id := store.nextID()
 
 	storeMessage := SentMessage{
-		ID:       id,
-		Time:     time.Now(),
-		Provider: provider,
-		Msg:      msg,
+		ID:   id,
+		Time: time.Now(),
+		Msg:  msg,
 	}
 
 	// reverse message order with fewer allocations
