@@ -7,13 +7,16 @@ import (
 )
 
 type renderer struct {
-	smsTpl *template.Template
+	smsTemplate          *template.Template
+	helpdeskeddyTemplate *template.Template
 }
 
 func newRenderer() *renderer {
 	r := &renderer{}
 
-	r.smsTpl = parseTemplates("sms", baseTmpl, smsTempl)
+	r.smsTemplate = parseTemplates("sms", baseTmplate, smsTemplate)
+
+	r.helpdeskeddyTemplate = parseTemplates("helpdeskeddy", baseTmplate, helpdeskeddyTemplate)
 
 	return r
 }
@@ -32,6 +35,10 @@ func parseTemplates(name string, tmpls ...string) *template.Template {
 	return t
 }
 
-func (re *renderer) renderSms(w http.ResponseWriter, smses SMSes) error {
-	return re.smsTpl.Execute(w, smses)
+func (re *renderer) renderSms(w http.ResponseWriter, smses SMSList) error {
+	return re.smsTemplate.Execute(w, smses)
+}
+
+func (re *renderer) renderHelpdeskeddy(w http.ResponseWriter, tickets HelpdeskEddyTicketList) error {
+	return re.helpdeskeddyTemplate.Execute(w, tickets)
 }

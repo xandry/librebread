@@ -1,6 +1,6 @@
 package api
 
-const baseTmpl = `
+const baseTmplate = `
 	{{define "base"}}
 	<!doctype html>
 	<html>
@@ -35,7 +35,7 @@ const baseTmpl = `
 	</html>
 	{{end}}`
 
-const smsTempl = `
+const smsTemplate = `
 	{{template "base" .}}
 
 	{{define "main"}}
@@ -55,6 +55,27 @@ const smsTempl = `
 			<td>{{ .To }}</td>
 			<td>{{ .Text }}</td>
 			<td>{{ .Provider }}</td>
+		</tr>
+		{{end}}		
+	</table>
+	{{end}}`
+
+const helpdeskeddyTemplate = `
+	{{template "base" .}}
+
+	{{define "main"}}
+	<table border=1>
+		<caption>Helpdeskeddy</caption>
+		<thead>
+			<th>Date</th>
+			<th>Title</th>
+			<th>Description</th>
+		</thead>
+		{{range .}}
+		<tr>
+			<td>{{ .CreatedAt.Format "2006-01-02 15:04:05" }}</td>
+			<td>{{ .Title }}</td>
+			<td>{{ .Description }}</td>
 		</tr>
 		{{end}}		
 	</table>

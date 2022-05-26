@@ -1,4 +1,4 @@
-package sms
+package infrastructure
 
 import (
 	"fmt"
@@ -9,21 +9,21 @@ import (
 	"github.com/vasyahuyasa/librebread/api"
 )
 
-type SMSMapper struct {
+type SQLMSRepo struct {
 	db *sqlx.DB
 }
 
-func NewSMSMapper(db *sqlx.DB) *SMSMapper {
-	return &SMSMapper{
+func NewSQLSMSRepo(db *sqlx.DB) *SQLMSRepo {
+	return &SQLMSRepo{
 		db: db,
 	}
 }
 
-func (s *SMSMapper) Create(from, to, text, provider string) (string, error) {
+func (s *SQLMSRepo) Create(from, to, text, provider string) (string, error) {
 	id := genID()
 	now := time.Now()
 
-	q := "INSERT INTO `sms` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
+	q := "INSERT INTO `sms_messages` (`id`, `time`, `from`, `to`, `text`, `provider`) VALUES (?,?,?,?,?,?)"
 	_, err := s.db.Exec(q, id, now, from, to, text, provider)
 	if err != nil {
 		return "", fmt.Errorf("can not insert sms message: %w", err)
@@ -32,23 +32,9 @@ func (s *SMSMapper) Create(from, to, text, provider string) (string, error) {
 	return id, nil
 }
 
-/*
-func (s *SMSMapper) Total() (int64, error) {
-	var count int64
-	q := "SELECT count(*) FROM `sms_messages`"
+func (s *SQLMSRepo) LastMessages(limit int64) (api.SMSList, error) {
 
-	err := s.db.Get(&count, q)
-	if err != nil {
-		return 0, fmt.Errorf("can not count sms messages: %w", err)
-	}
-
-	return count, nil
-}
-*/
-
-func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
-
-	q := "SELECT `id`, `time`, `from`, `to`, `text`, `provider` FROM `sms` ORDER BY `time` DESC LIMIT ?"
+	q := "SELECT `id`, `time`, `from`, `to`, `text`, `provider` FROM `sms_messages` ORDER BY `time` DESC LIMIT ?"
 	rows, err := s.db.Query(q, limit)
 	if err != nil {
 		return nil, fmt.Errorf("can not select %d last messages: %v", limit, err)
@@ -56,7 +42,7 @@ func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
 
 	defer rows.Close()
 
-	var smses api.SMSes
+	var smses api.SMSList
 
 	for rows.Next() {
 		var id string
@@ -68,7 +54,7 @@ func (s *SMSMapper) LastMessages(limit int64) (api.SMSes, error) {
 
 		err = rows.Scan(&id, &time, &from, &to, &text, &provider)
 		if err != nil {
-			return nil, fmt.Errorf("can not red row: %v", err)
+			return nil, fmt.Errorf("can not red row: %w", err)
 		}
 
 		smses = append(smses, api.SMS{

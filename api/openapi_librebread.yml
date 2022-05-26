@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: LibreBread API
-  version: 0.0.1
+  version: 0.0.2
 paths:
   /:
     get:
@@ -34,7 +34,41 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SMSes'
+                $ref: '#/components/schemas/SMSList'
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Internal error ocured
+          content:
+            text/plain:
+              schema:
+                type: string
+  /helpdesk:
+    get:
+      operationId: GetHelpdeskEddyTicket
+      summary: List tickets
+      description: List tickets
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            format: int64
+            default: 50
+          description: The number of latest sms
+        - in: query
+          name: json
+          schema:
+            type: boolean
+          description: Should be JSON response
+      responses:
+        '200':
+          description: A array of tickets (default last 50)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelpdeskEddyTicketList'
             text/html:
               schema:
                 type: string
@@ -85,7 +119,7 @@ paths:
       responses:
         '501':
           description: Not implemented
-  /api/v2/tickets:
+  /api/v2/tickets:    
     post:
       operationId: PostHelpdeskEddyTicket
       summary: Create HelpdeskEddy ticket
@@ -93,23 +127,23 @@ paths:
       requestBody:
         required: true
         content:
-        application/x-www-form-urlencoded:
-          schema:
-            type: object
-            required:
-              - title
-              - description
-            properties:
-              type_id:
-                type: integer
-              priority_id:
-                type: integer
-              department_id:
-                type: integer
-              title:
-                type: string
-              description:
-                type: string
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+              properties:
+                type_id:
+                  type: integer
+                priority_id:
+                  type: integer
+                department_id:
+                  type: integer
+                title:
+                  type: string
+                description:
+                  type: string
       responses:
         '200':
           description: Ticket succesfuly created
@@ -139,7 +173,6 @@ components:
       properties:
         ID:
           type: string
-          format: uuid
         Time:
           type: string
           format: date-time
@@ -151,7 +184,7 @@ components:
           type: string
         Provider:
           type: string
-    SMSes:
+    SMSList:
       type: array
       items:
         $ref: '#/components/schemas/SMS'
@@ -159,4 +192,36 @@ components:
       type: array
       items:
         type: string
-        format: uuid
+    HelpdeskEddyTicket:
+      type: object
+      required:
+        - ID
+        - Time
+        - TypeId
+        - PriorityId
+        - DepartmentId
+        - Title
+        - Description
+      properties:
+        ID:
+          type: string
+        Time:
+          type: string
+          format: date-time
+        TypeId:
+          type: integer
+          minimum : 0
+        PriorityId:
+          type: integer
+          minimum : 0
+        DepartmentId:
+          type: integer
+          minimum : 0
+        Title:
+          type: string
+        Description:
+          type: string
+    HelpdeskEddyTicketList:
+      type: array
+      items:
+        $ref: '#/components/schemas/HelpdeskEddyTicket'
