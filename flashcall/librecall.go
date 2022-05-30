@@ -21,6 +21,7 @@ type CallRecord struct {
 	CallAt time.Time
 	To     string
 	From   string
+	Code   string
 }
 
 type LibreCall struct {
@@ -67,7 +68,7 @@ func NewLibrecall(storage *MemoryStorage) *LibreCall {
 
 func (call *LibreCall) Call(callTo Phone, confirmCode code) {
 	phoneFrom := generateRandomPhoneWithSuffixCode(confirmCode)
-	call.stor.addRecord(callTo.phone, phoneFrom.phone)
+	call.stor.addRecord(callTo.phone, phoneFrom.phone, confirmCode.code)
 }
 
 func (call *LibreCall) AllCallsSortedDesc() []CallRecord {
@@ -79,6 +80,7 @@ func (call *LibreCall) AllCallsSortedDesc() []CallRecord {
 			CallAt: v.at,
 			To:     v.to,
 			From:   v.from,
+			Code:   v.code,
 		})
 	}
 

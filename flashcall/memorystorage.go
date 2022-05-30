@@ -9,6 +9,7 @@ type memRecord struct {
 	at   time.Time
 	to   string
 	from string
+	code string
 }
 
 type MemoryStorage struct {
@@ -16,7 +17,7 @@ type MemoryStorage struct {
 	records []memRecord
 }
 
-func (stor *MemoryStorage) addRecord(to string, from string) {
+func (stor *MemoryStorage) addRecord(to string, from string, code string) {
 	stor.mu.Lock()
 	defer stor.mu.Unlock()
 
@@ -24,6 +25,7 @@ func (stor *MemoryStorage) addRecord(to string, from string) {
 		at:   time.Now(),
 		to:   to,
 		from: from,
+		code: code,
 	})
 }
 
