@@ -133,6 +133,7 @@ func flashcallTableHeaderWithCount(count int) string {
 			<th>Time</th>
 			<th>To</th>
 			<th>From</th>
+			<th>Code</th>
 		</thead>`, count)
 }
 
@@ -553,8 +554,9 @@ func flashcallIndexhandler(call *flashcall.LibreCall) func(w http.ResponseWriter
 		for _, msg := range calls {
 			b.WriteString("<tr>" +
 				"<td>" + msg.CallAt.Format("2006-01-02 15:04:05") + "</td>" +
-				"<td>" + html.EscapeString(msg.From) + "</td>" +
 				"<td>" + html.EscapeString(msg.To) + "</td>" +
+				"<td>" + html.EscapeString(msg.From) + "</td>" +
+				"<td>" + html.EscapeString(msg.Code) + "</td>" +
 				"</tr>")
 		}
 
