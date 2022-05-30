@@ -59,7 +59,13 @@ __LibeSMS__
 | URL                | DESCRIPTION |
 |--------------------|-------------|
 | `/libre/send`      | send sms    |
-| `/libew/check`     | not implemented |
+| `/libe/check`      | not implemented |
+
+__LibeCall__
+
+| URL                | DESCRIPTION |
+|--------------------|-------------|
+| `/libre/flashcall` | init flashcall |
 
 ### SMTP 25 port
 

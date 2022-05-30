@@ -1,15 +1,38 @@
 package flashcall
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
-type MemoryStorage struct {
-	mu     sync.Mutex
-	phones []string
+type memRecord struct {
+	at   time.Time
+	to   string
+	from string
 }
 
-func (stor *MemoryStorage) AddPhone(phone string) {
+type MemoryStorage struct {
+	mu      sync.Mutex
+	records []memRecord
+}
+
+func (stor *MemoryStorage) addRecord(to string, from string) {
 	stor.mu.Lock()
 	defer stor.mu.Unlock()
 
-	stor.phones = append(stor.phones, phone)
+	stor.records = append(stor.records, memRecord{
+		at:   time.Now(),
+		to:   to,
+		from: from,
+	})
+}
+
+func (stor *MemoryStorage) allRecordsReversed() []memRecord {
+	allRecords := make([]memRecord, 0, len(stor.records))
+
+	for i := len(stor.records) - 1; i >= 0; i-- {
+		allRecords = append(allRecords, stor.records[i])
+	}
+
+	return allRecords
 }

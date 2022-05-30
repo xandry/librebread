@@ -1,11 +1,26 @@
 package flashcall
 
-import "net/http"
+import (
+	"net/http"
+)
 
-type LibrecallHandler struct {
-	librecall *Librecall
-}
+func LibrecallHandler(librecall *Librecall) func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		strPhone := r.FormValue("phone")
+		strCode := r.FormValue("code")
 
-func (h *LibrecallHandler) HandleCall(w http.ResponseWriter, r *http.Request) {
+		phone, err := newPhone(strPhone)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 
+		code, err := newCode(strCode)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		librecall.Call(phone, code)
+	})
 }
