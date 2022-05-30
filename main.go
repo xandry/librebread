@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/vasyahuyasa/librebread/flashcall"
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
 	"github.com/vasyahuyasa/librebread/push"
@@ -52,6 +53,7 @@ const (
 				<li><a href="/helpdesk">helpdesk</a></li>
 				<li><a href="/email">email</a></li>
 				<li><a href="/push">push</a></li>
+				<li><a href="/flashcall">flashcall</a></li>
 			</ol>
 			<button onclick="Notification.requestPermission()">notifications</button>`
 
@@ -62,6 +64,8 @@ const (
 	emailTableFooter = `</table>`
 
 	pushTableFooter = `</table>`
+
+	flashcallTableFooter = `</table>`
 
 	tplFooter = `</body></html>`
 )
@@ -118,6 +122,17 @@ func pushTableHeaderWithCount(count int) string {
 			<th>Push service</th>
 			<th>Data</th>
 			<th>Tokens</th>
+		</thead>`, count)
+}
+
+func flashcallTableHeaderWithCount(count int) string {
+	return fmt.Sprintf(`
+	<table border=1>
+		<caption>Flashcall (%d)</caption>
+		<thead>
+			<th>Time</th>
+			<th>To</th>
+			<th>From</th>
 		</thead>`, count)
 }
 
@@ -213,8 +228,11 @@ func main() {
 	librePush := push.NewLibrePush(pushStorage)
 	libreBreadHandler := push.NewLibreBreadHandler(librePush)
 
+	// libre falshcall
+	libreCall := flashcall.NewLibrecall(&flashcall.MemoryStorage{})
+
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall)
 	}()
 
 	// devino telecom mock server
@@ -277,7 +295,11 @@ func libreBreadPushRoutes(mux *chi.Mux, h *push.LibreBreadHandler) {
 	mux.Post("/push", h.HandlePush)
 }
 
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage) {
+func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
+	mux.Post("/libre/flashcall", flashcall.LibrecallHandler(libreCall))
+}
+
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		if user != "" && password != "" {
@@ -289,6 +311,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 		r.Get("/email", emailIndexHandler(mailStor))
 		r.Get("/push", pushIndexHandler(pushStore))
 		r.Get("/push/{id}", pushByIDHandler(pushStore))
+		r.Get("/flashcall", flashcallIndexhandler(libreCall))
 	})
 
 	r.Get("/events", sseNotification.ClientHandler())
@@ -299,6 +322,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotification)
 	libreBreadPushRoutes(r, libreBreadhandler)
+	libreCallRoutes(r, libreCall)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
@@ -514,6 +538,31 @@ func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Req
 		_, err = w.Write([]byte(b.String()))
 		if err != nil {
 			log.Printf("can not send push %s to client: %v", id, err)
+		}
+	}
+}
+
+func flashcallIndexhandler(call *flashcall.LibreCall) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		calls := call.AllCallsSortedDesc()
+
+		b := strings.Builder{}
+
+		b.WriteString(flashcallTableHeaderWithCount(len(calls)))
+
+		for _, msg := range calls {
+			b.WriteString("<tr>" +
+				"<td>" + msg.CallAt.Format("2006-01-02 15:04:05") + "</td>" +
+				"<td>" + html.EscapeString(msg.From) + "</td>" +
+				"<td>" + html.EscapeString(msg.To) + "</td>" +
+				"</tr>")
+		}
+
+		b.WriteString(flashcallTableFooter)
+
+		_, err := w.Write([]byte(b.String()))
+		if err != nil {
+			log.Printf("can not send index to client: %v", err)
 		}
 	}
 }
