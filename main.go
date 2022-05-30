@@ -53,6 +53,7 @@ const (
 				<li><a href="/helpdesk">helpdesk</a></li>
 				<li><a href="/email">email</a></li>
 				<li><a href="/push">push</a></li>
+				<li><a href="/flashcall">flashcall</a></li>
 			</ol>
 			<button onclick="Notification.requestPermission()">notifications</button>`
 
@@ -227,8 +228,11 @@ func main() {
 	librePush := push.NewLibrePush(pushStorage)
 	libreBreadHandler := push.NewLibreBreadHandler(librePush)
 
+	// libre falshcall
+	libreCall := flashcall.NewLibrecall(&flashcall.MemoryStorage{})
+
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall)
 	}()
 
 	// devino telecom mock server
@@ -291,7 +295,11 @@ func libreBreadPushRoutes(mux *chi.Mux, h *push.LibreBreadHandler) {
 	mux.Post("/push", h.HandlePush)
 }
 
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.Librecall) {
+func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
+	mux.Post("/libre/flashcall", flashcall.LibrecallHandler(libreCall))
+}
+
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		if user != "" && password != "" {
@@ -303,7 +311,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 		r.Get("/email", emailIndexHandler(mailStor))
 		r.Get("/push", pushIndexHandler(pushStore))
 		r.Get("/push/{id}", pushByIDHandler(pushStore))
-		r.Get("/flashcall", flashcallIndexhandler())
+		r.Get("/flashcall", flashcallIndexhandler(libreCall))
 	})
 
 	r.Get("/events", sseNotification.ClientHandler())
@@ -314,6 +322,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotification)
 	libreBreadPushRoutes(r, libreBreadhandler)
+	libreCallRoutes(r, libreCall)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
@@ -533,7 +542,7 @@ func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func flashcallIndexhandler(call *flashcall.Librecall) func(w http.ResponseWriter, r *http.Request) {
+func flashcallIndexhandler(call *flashcall.LibreCall) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		calls := call.AllCallsSortedDesc()
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func LibrecallHandler(librecall *Librecall) func(w http.ResponseWriter, r *http.Request) {
+func LibrecallHandler(librecall *LibreCall) func(w http.ResponseWriter, r *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		strPhone := r.FormValue("phone")
 		strCode := r.FormValue("code")

@@ -23,7 +23,7 @@ type CallRecord struct {
 	From   string
 }
 
-type Librecall struct {
+type LibreCall struct {
 	stor *MemoryStorage
 }
 
@@ -59,12 +59,18 @@ func (p *Phone) replaceSuffixWithCode(suffixCode code) {
 	p.phone = p.phone[:len(p.phone)-len(suffixCode.code)] + suffixCode.code
 }
 
-func (call *Librecall) Call(callTo Phone, confirmCode code) {
+func NewLibrecall(storage *MemoryStorage) *LibreCall {
+	return &LibreCall{
+		stor: storage,
+	}
+}
+
+func (call *LibreCall) Call(callTo Phone, confirmCode code) {
 	phoneFrom := generateRandomPhoneWithSuffixCode(confirmCode)
 	call.stor.addRecord(callTo.phone, phoneFrom.phone)
 }
 
-func (call *Librecall) AllCallsSortedDesc() []CallRecord {
+func (call *LibreCall) AllCallsSortedDesc() []CallRecord {
 	all := call.stor.allRecordsReversed()
 
 	result := make([]CallRecord, 0, len(all))
