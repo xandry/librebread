@@ -6,54 +6,56 @@ import (
 	"text/template"
 )
 
-const listPaymentsLimit = 100
+const listPaymentProcessesLimit = 100
 
-func (p *LibrePayment) IndexPaymentHandler(w http.ResponseWriter, r *http.Request) {
-	listPayments := p.LastPayments(listPaymentsLimit)
-	templatePayments, err := p.ConvertToTemplatePayments(listPayments)
+func (p *Payment) IndexPaymentHandler(w http.ResponseWriter, r *http.Request) {
+	listProcesses := p.LastProcesses(listPaymentProcessesLimit)
+	templateProcesses, err := p.ConvertToTemplatePaymentProcesses(listProcesses)
 
 	if err != nil {
 		log.Printf("Payment: %v", err)
 		return
 	}
 
-	payments := struct {
-		Payments []TemplatePayment
+	paymentProcessesData := struct {
+		NumberOfProcesses int
+		Processes         []TemplatePaymentProcess
 	}{
-		Payments: templatePayments,
+		NumberOfProcesses: p.ProcessesLen(),
+		Processes:         templateProcesses,
 	}
 
 	indexTemplate := template.Must(template.New("index").Parse(tplIndex))
 
-	if err := indexTemplate.Execute(w, payments); err != nil {
+	if err := indexTemplate.Execute(w, paymentProcessesData); err != nil {
 		log.Printf("Payment: %v", err)
 		return
 	}
 }
 
-func (p *LibrePayment) ViewPaymentHandler(w http.ResponseWriter, r *http.Request) {
-	paymentID, err := GetPaymentIDFromURL(r)
+func (p *Payment) ViewPaymentHandler(w http.ResponseWriter, r *http.Request) {
+	processID, err := GetProcessIDFromURL(r)
 
 	if err != nil {
 		log.Printf("Payment: %v", err)
 		return
 	}
 
-	payment, err := p.GetPaymentByID(paymentID)
+	paymentProcess, err := p.GetProcessByID(processID)
 
 	if err != nil {
 		log.Printf("Payment: %v", err)
 		return
 	}
 
-	templatePayment, err := p.ConvertToTemplatePayment(payment)
+	templatePaymentProcess, err := p.ConvertToTemplatePaymentProcess(paymentProcess)
 
 	if err != nil {
 		log.Printf("Payment: %v", err)
 		return
 	}
 
-	provider, err := p.GetProviderByID(payment.ProviderID)
+	provider, err := p.GetProviderByID(paymentProcess.ProviderID)
 
 	if err != nil {
 		log.Printf("Payment: %v", err)
@@ -67,7 +69,7 @@ func (p *LibrePayment) ViewPaymentHandler(w http.ResponseWriter, r *http.Request
 	case TinkoffProvider:
 		viewTemplate := template.Must(template.New("view").Parse(tplTinkoffView))
 
-		if err := viewTemplate.Execute(w, templatePayment); err != nil {
+		if err := viewTemplate.Execute(w, templatePaymentProcess); err != nil {
 			log.Printf("Payment: %v", err)
 			return
 		}

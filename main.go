@@ -235,7 +235,7 @@ func main() {
 	// libre falshcall
 	libreCall := flashcall.NewLibrecall(&flashcall.MemoryStorage{})
 
-	librePayment := payment.NewLibrePayment()
+	librePayment := payment.NewPayment()
 
 	go func() {
 		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall, librePayment)
@@ -306,7 +306,7 @@ func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
 	mux.Post("/libre/flashcall", flashcall.LibrecallHandler(libreCall))
 }
 
-func tinkoffRoutes(r chi.Router, librePayment *payment.LibrePayment) {
+func tinkoffRoutes(r chi.Router, librePayment *payment.Payment) {
 	r.Route("/tinkoff", func(r chi.Router) {
 		r.Use(tinkoff.CheckApplicationJson)
 		r.Post("/init/", tinkoff.InitHandler(librePayment))
@@ -315,7 +315,7 @@ func tinkoffRoutes(r chi.Router, librePayment *payment.LibrePayment) {
 	})
 }
 
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall, librePayment *payment.LibrePayment) {
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall, librePayment *payment.Payment) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		if user != "" && password != "" {
@@ -330,9 +330,9 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 			r.Get("/push/{id}", pushByIDHandler(pushStore))
 			r.Get("/flashcall", flashcallIndexhandler(libreCall))
 			r.Get("/payments", librePayment.IndexPaymentHandler)
-			r.Get("/payment/{paymentID}", librePayment.ViewPaymentHandler)
+			r.Get("/payment/{processID}", librePayment.ViewPaymentHandler)
 		})
-		r.Route("/tinkoff/{paymentID}", func(r chi.Router) {
+		r.Route("/tinkoff/{processID}", func(r chi.Router) {
 			r.Get("/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
 			r.Get("/send_notification", tinkoff.SendNotificationHandler(librePayment))
 		})

@@ -8,15 +8,13 @@ import (
 	"net/http"
 	"time"
 
-	paymentpkg "github.com/vasyahuyasa/librebread/payment"
+	"github.com/vasyahuyasa/librebread/payment"
 )
 
-// Инициализирует платеж
-func InitHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http.Request) {
+func InitHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var input InitInput
-
-		if err := readJSON(r, &input); err != nil {
+		input, err := initRequest(r)
+		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 			return
 		}
@@ -27,12 +25,12 @@ func InitHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http
 			return
 		}
 
-		if provider.Type != paymentpkg.TinkoffProvider {
-			log.Printf("Tinkoff: %v", paymentpkg.ErrIncorrectPaymentProvider)
+		if provider.Type != payment.TinkoffProvider {
+			log.Printf("Tinkoff: %v", payment.ErrIncorrectPaymentProvider)
 			return
 		}
 
-		var client paymentpkg.Client
+		var client payment.Client
 		if input.CustomerKey != "" {
 			if p.HasClientByID(input.CustomerKey) {
 				client, err = p.GetClientByID(input.CustomerKey)
@@ -61,12 +59,12 @@ func InitHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http
 			return
 		}
 
-		paymentID := p.GeneratePaymentID()
+		processID := p.GenerateProcessID()
 
-		paymentURL := fmt.Sprintf("%s://%s/payment/%d", scheme, host, paymentID)
+		paymentURL := fmt.Sprintf("%s://%s/payment/%d", scheme, host, processID)
 
-		payment := paymentpkg.Payment{
-			PaymentID:       paymentID,
+		process := payment.PaymentProcess{
+			ProcessID:       processID,
 			ProviderID:      provider.ProviderID,
 			CreatedOn:       time.Now(),
 			PaymentURL:      paymentURL,
@@ -81,43 +79,84 @@ func InitHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http
 			OrderID:         input.OrderID,
 		}
 
-		p.AddPayment(payment)
+		p.AddProcess(process)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(initResponse(payment, input.TerminalKey))
+		json.NewEncoder(w).Encode(initResponse(process, input.TerminalKey))
 	}
 }
 
-// Выполняет автоплатеж
-func ChargeHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http.Request) {
+func ChargeHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO: доделать
-		w.Write([]byte("OK"))
-	}
-}
-
-func GetStateHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var input GetStateInput
-
-		if err := readJSON(r, &input); err != nil {
+		input, err := chargeRequest(r)
+		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 			return
 		}
 
-		if input.PaymentID == 0 {
-			log.Printf("Tinkoff: %v", paymentpkg.ErrRequestNotPaymentID)
+		process, provider, err := getPaymentProcessAndProviderByProcessID(input.ProcessID, p)
+		if err != nil {
+			log.Printf("Tinkoff: %v", err)
 			return
 		}
 
-		payment, err := p.GetPaymentByID(input.PaymentID)
+		process.NotificationResponseOkReceived = false
+		process.Status = string(StatusConfirmed)
 
+		client, _ := p.GetClientByID(process.ClientID)
+		ok, err := sendNotification(process, client, provider)
+		if err != nil {
+			log.Printf("Tinkoff: %v", err)
+		} else if ok {
+			process.NotificationResponseOkReceived = true
+		} else {
+			log.Println("Tinkoff: incorrect response to the notification was received")
+		}
+
+		p.UpdateProcess(process)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(chargeResponse(process, input.TerminalKey))
+	}
+}
+
+func GetStateHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		input, err := getStateRequest(r)
+		if err != nil {
+			log.Printf("Tinkoff: %v", err)
+			return
+		}
+
+		process, _, err := getPaymentProcessAndProviderByProcessID(input.ProcessID, p)
 		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(getStateResponse(payment, input.TerminalKey))
+		json.NewEncoder(w).Encode(getStateResponse(process, input.TerminalKey))
 	}
+}
+
+func getPaymentProcessAndProviderByProcessID(processID int64, p *payment.Payment) (process payment.PaymentProcess, provider payment.Provider, err error) {
+	if processID == 0 {
+		return process, provider, payment.ErrRequestNotProcessID
+	}
+
+	process, err = p.GetProcessByID(processID)
+	if err != nil {
+		return process, provider, err
+	}
+
+	provider, err = p.GetProviderByID(process.ProviderID)
+	if err != nil {
+		return process, provider, err
+	}
+
+	if provider.Type != payment.TinkoffProvider {
+		return process, provider, err
+	}
+
+	return process, provider, nil
 }

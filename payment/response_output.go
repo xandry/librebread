@@ -2,8 +2,8 @@ package payment
 
 import "time"
 
-type TemplatePayment struct {
-	PaymentID                      int64
+type TemplatePaymentProcess struct {
+	ProcessID                      int64
 	Provider                       ProviderType
 	CreatedOn                      time.Time
 	PaymentURL                     string

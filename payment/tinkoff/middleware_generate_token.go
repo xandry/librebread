@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-// Алгоритм формирования подписи запроса:
+// Algorithm of request signature formation:
 // https://www.tinkoff.ru/kassa/develop/api/request-sign/
 func generateToken(data map[string]interface{}, password string) (token string, err error) {
 	delete(data, "Token")

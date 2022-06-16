@@ -30,12 +30,12 @@ https://hub.docker.com/r/vasyahuyasa/librebread
 | `/helpdesk`            | Helpdesk eddy  |
 | `/email`               | Email messages |
 
-__LibeSMS__
+__LibreSMS__
 
 | URL                | DESCRIPTION |
 |--------------------|-------------|
 | `/libre/send`      | send sms    |
-| `/libew/check`     | not implemented |
+| `/libre/check`     | not implemented |
 
 ### HTTPS 443 port
 
@@ -54,18 +54,26 @@ __SmsRU__
 | `/sms/user/send`   | send sms    |
 | `/sms/user/status` | messages status |
 
-__LibeSMS__
+__LibreSMS__
 
 | URL                | DESCRIPTION |
 |--------------------|-------------|
 | `/libre/send`      | send sms    |
-| `/libe/check`      | not implemented |
+| `/libre/check`     | not implemented |
 
-__LibeCall__
+__LibreCall__
 
 | URL                | DESCRIPTION |
 |--------------------|-------------|
 | `/libre/flashcall` | init flashcall |
+
+__TinkoffPayment__
+
+| URL                 | DESCRIPTION |
+|---------------------|-------------|
+| `/tinkoff/init`     | creates payment |
+| `/tinkoff/charge`   | performs autopay |
+| `/tinkoff/getstate` | returns the current payment status |
 
 ### SMTP 25 port
 

@@ -17,8 +17,8 @@ const (
 	<table cellpadding="7">
 		<tbody>
 			<tr>
-			<td>Payment ID</td>
-			<td><b>{{ .PaymentID }}</b></td>
+			<td>Process ID</td>
+			<td><b>{{ .ProcessID }}</b></td>
 			</tr>
 			<tr>
 			<td>Created on</td>
@@ -42,17 +42,17 @@ const (
 			<td colspan="2">
 				{{ if eq .Status "NEW" "FORM_SHOWED" }}
 					{{ if eq .Status "NEW" }}
-						<a href="/tinkoff/{{ .PaymentID }}/set_status/FORM_SHOWED"><button class="btn-blue">Платежная форма открыта<br><b>FORM_SHOWED</b></button></a>
+						<a href="/tinkoff/{{ .ProcessID }}/set_status/FORM_SHOWED"><button class="btn-blue">Payment form is open<br><b>FORM_SHOWED</b></button></a>
 					{{ end }}
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/DEADLINE_EXPIRED"><button class="btn-red">Время оплаты истекло<br><b>DEADLINE_EXPIRED</b></button></a>
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/ATTEMPTS_EXPIRED"><button class="btn-red">Попытки открытия формы исчерпаны<br><b>ATTEMPTS_EXPIRED</b></button></a>
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/CONFIRMED"><button class="btn-green">Одностадийная оплата<br><b>CONFIRMED</b></button></a>
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/AUTHORIZED"><button class="btn-green">Двустадийная оплата<br><b>AUTHORIZED</b></button></a>
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/REJECTED"><button class="btn-red">Отклонен банком/недостаточно средств<br><b>REJECTED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/DEADLINE_EXPIRED"><button class="btn-red">Payment time has expired<br><b>DEADLINE_EXPIRED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/ATTEMPTS_EXPIRED"><button class="btn-red">Attempts to open the form are exhausted<br><b>ATTEMPTS_EXPIRED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/CONFIRMED"><button class="btn-green">Single-stage payment<br><b>CONFIRMED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/AUTHORIZED"><button class="btn-green">Two-stage payment<br><b>AUTHORIZED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/REJECTED"><button class="btn-red">Rejected by the bank / insufficient funds<br><b>REJECTED</b></button></a>
 				{{ else if eq .Status "AUTHORIZED" }}
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/CONFIRMED"><button class="btn-green">Подтверждение оплаты<br><b>CONFIRMED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/CONFIRMED"><button class="btn-green">Payment confirmation<br><b>CONFIRMED</b></button></a>
 				{{ else if eq .Status "CONFIRMED" }}
-					<a href="/tinkoff/{{ .PaymentID }}/set_status/REFUNDED"><button class="btn-red">Возврат оплаты<br><b>REFUNDED</b></button></a>
+					<a href="/tinkoff/{{ .ProcessID }}/set_status/REFUNDED"><button class="btn-red">Refund of payment<br><b>REFUNDED</b></button></a>
 				{{ end }}
 			</td>
 			</tr>
@@ -75,13 +75,13 @@ const (
 			</tr>
 			{{ if .NotificationURL }}
 			<tr>
-			<td>Ответ на нотификацию получен</td>
+			<td>Response to notification received</td>
 			<td><b>{{ .NotificationResponseOkReceived }}</b></td>
 			</tr>
 				{{ if eq .Status "AUTHORIZED" "REJECTED" "CONFIRMED" "REFUNDED" }}
 				<tr>
 				<td colspan="2">
-				<a href="/tinkoff/{{ .PaymentID }}/send_notification"><button class="btn-blue">Отправить нотификацию</button></a>
+				<a href="/tinkoff/{{ .ProcessID }}/send_notification"><button class="btn-blue">Send a notification</button></a>
 				</td>
 				</tr>
 				{{ end }}

@@ -5,13 +5,6 @@ import (
 	"time"
 )
 
-const (
-	minPaymentID = 1000
-	maxPaymentID = 10000000
-	minRebillID  = 1000
-	maxRebillID  = 10000000
-)
-
 type ProviderType string
 
 const (
@@ -29,14 +22,14 @@ const (
 type MemoryStorage struct {
 	storageMu                  sync.Mutex
 	providers                  map[int64]Provider
-	payments                   map[int64]Payment
-	listPaymentIDsInOrder      []int64
+	paymentProcesses           map[int64]PaymentProcess
+	listProcessIDsInOrder      []int64
 	clients                    map[string]Client
 	clientIDsIndexesByRebillID map[int64]string
 }
 
-type Payment struct {
-	PaymentID                      int64
+type PaymentProcess struct {
+	ProcessID                      int64
 	ProviderID                     int64
 	CreatedOn                      time.Time
 	PaymentURL                     string
@@ -79,64 +72,68 @@ var mockProviders = map[int64]Provider{
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
 		providers:                  mockProviders,
-		payments:                   make(map[int64]Payment),
+		paymentProcesses:           make(map[int64]PaymentProcess),
 		clients:                    make(map[string]Client),
 		clientIDsIndexesByRebillID: make(map[int64]string),
 	}
 }
 
-// Payment
-func (s *MemoryStorage) HasPaymentByID(paymentID int64) bool {
-	_, ok := s.payments[paymentID]
+// Payment Processes
+func (s *MemoryStorage) HasProcessByID(processID int64) bool {
+	_, ok := s.paymentProcesses[processID]
 	return ok
 }
 
-func (s *MemoryStorage) GetPaymentByID(paymentID int64) (Payment, error) {
+func (s *MemoryStorage) GetProcessByID(processID int64) (PaymentProcess, error) {
 	s.storageMu.Lock()
 	defer s.storageMu.Unlock()
 
-	if !s.HasPaymentByID(paymentID) {
-		return Payment{}, ErrPaymentNotFound
+	if !s.HasProcessByID(processID) {
+		return PaymentProcess{}, ErrPaymentProcessNotFound
 	}
-	return s.payments[paymentID], nil
+	return s.paymentProcesses[processID], nil
 }
 
-func (s *MemoryStorage) AddPayment(p Payment) error {
+func (s *MemoryStorage) AddProcess(p PaymentProcess) error {
 	s.storageMu.Lock()
 	defer s.storageMu.Unlock()
 
-	if s.HasPaymentByID(p.PaymentID) {
-		return ErrPaymentAlreadyExists
+	if s.HasProcessByID(p.ProcessID) {
+		return ErrPaymentProcessAlreadyExists
 	}
 
-	s.payments[p.PaymentID] = p
-	s.listPaymentIDsInOrder = append(s.listPaymentIDsInOrder, p.PaymentID)
+	s.paymentProcesses[p.ProcessID] = p
+	s.listProcessIDsInOrder = append(s.listProcessIDsInOrder, p.ProcessID)
 	return nil
 }
 
-func (s *MemoryStorage) UpdatePayment(p Payment) error {
+func (s *MemoryStorage) UpdateProcess(p PaymentProcess) error {
 	s.storageMu.Lock()
 	defer s.storageMu.Unlock()
 
-	if !s.HasPaymentByID(p.PaymentID) {
-		return ErrPaymentNotFound
+	if !s.HasProcessByID(p.ProcessID) {
+		return ErrPaymentProcessNotFound
 	}
 
-	s.payments[p.PaymentID] = p
+	s.paymentProcesses[p.ProcessID] = p
 	return nil
 }
 
-func (s *MemoryStorage) LastPayments(n int) []Payment {
+func (s *MemoryStorage) LastProcesses(n int) []PaymentProcess {
 	s.storageMu.Lock()
 	defer s.storageMu.Unlock()
 
-	payments := make([]Payment, 0, n)
-	length := len(s.payments) - 1
+	processes := make([]PaymentProcess, 0, n)
+	length := len(s.paymentProcesses) - 1
 
 	for i := 0; length-i >= 0 && i < n; i++ {
-		payments = append(payments, s.payments[s.listPaymentIDsInOrder[length-i]])
+		processes = append(processes, s.paymentProcesses[s.listProcessIDsInOrder[length-i]])
 	}
-	return payments
+	return processes
+}
+
+func (s *MemoryStorage) ProcessesLen() int {
+	return len(s.paymentProcesses)
 }
 
 // Client
@@ -145,7 +142,7 @@ func (s *MemoryStorage) HasClientByID(clientID string) bool {
 	return ok
 }
 
-func (s *MemoryStorage) HasRebillId(rebillID int64) bool {
+func (s *MemoryStorage) HasRebillID(rebillID int64) bool {
 	_, ok := s.clientIDsIndexesByRebillID[rebillID]
 	return ok
 }
@@ -168,7 +165,7 @@ func (s *MemoryStorage) AddClient(c Client) error {
 		return ErrClientAlreadyExists
 	}
 
-	if s.HasRebillId(c.RebillID) {
+	if s.HasRebillID(c.RebillID) {
 		return ErrRebillIDAlreadyExists
 	}
 
@@ -197,7 +194,7 @@ func (s *MemoryStorage) GetProviderByID(providerID int64) (Provider, error) {
 	defer s.storageMu.Unlock()
 
 	if !s.HasProviderByID(providerID) {
-		return Provider{}, ErrProviderNotFound
+		return Provider{}, ErrPaymentProviderNotFound
 	}
 	return s.providers[providerID], nil
 }
@@ -211,7 +208,7 @@ func (s *MemoryStorage) GetProviderByLogin(login string) (Provider, error) {
 			return s.providers[id], nil
 		}
 	}
-	return Provider{}, ErrProviderNotFound
+	return Provider{}, ErrPaymentProviderNotFound
 }
 
 func (s *MemoryStorage) AddProvider(p Provider) error {
@@ -219,11 +216,11 @@ func (s *MemoryStorage) AddProvider(p Provider) error {
 	defer s.storageMu.Unlock()
 
 	if s.HasProviderByID(p.ProviderID) {
-		return ErrProviderIDAlreadyExists
+		return ErrPaymentProviderIDAlreadyExists
 	}
 
 	if s.HasProviderByLogin(p.Login) {
-		return ErrProviderLoginAlreadyExists
+		return ErrPaymentProviderLoginAlreadyExists
 	}
 
 	s.providers[p.ProviderID] = p

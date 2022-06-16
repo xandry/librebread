@@ -7,65 +7,64 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi"
-	paymentpkg "github.com/vasyahuyasa/librebread/payment"
+	"github.com/vasyahuyasa/librebread/payment"
 )
 
-func SetStatusHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http.Request) {
+func SetStatusHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		payment, provider, err := getPaymentAndProvider(r, p)
-
+		process, provider, err := getPaymentProcessAndProvider(r, p)
 		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 			return
 		}
 
-		paymentStatus := chi.URLParam(r, "status")
-		redirectUrl := fmt.Sprintf("/payment/%d", payment.PaymentID)
+		PaymentProcessStatus := chi.URLParam(r, "status")
+		redirectUrl := fmt.Sprintf("/payment/%d", process.ProcessID)
 
-		switch paymentStatus {
+		switch PaymentProcessStatus {
 		default:
-			log.Printf("Tinkoff: %v; Status: %s", paymentpkg.ErrUnknownPaymentStatus, paymentStatus)
+			log.Printf("Tinkoff: %v; Status: %s", payment.ErrUnknownPaymentProcessStatus, PaymentProcessStatus)
 
 		case string(StatusDeadlineExpired):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
 		case string(StatusAttemptsExpired):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
 		case string(StatusFormShowed):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
 		case string(StatusAuthorized):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
 		case string(StatusRefunded):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
 		case string(StatusConfirmed):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
-			redirectUrl = strings.Replace(payment.SuccessURL, "${Success}", "true", -1)
+			redirectUrl = strings.Replace(process.SuccessURL, "${Success}", "true", -1)
 			redirectUrl = strings.Replace(redirectUrl, "${ErrorCode}", "0", -1)
 
 		case string(StatusRejected):
-			payment.Status = paymentStatus
-			p.UpdatePayment(payment)
+			process.Status = PaymentProcessStatus
+			p.UpdateProcess(process)
 
-			redirectUrl = strings.Replace(payment.FailURL, "${Success}", "false", -1)
+			redirectUrl = strings.Replace(process.FailURL, "${Success}", "false", -1)
 			redirectUrl = strings.Replace(redirectUrl, "${ErrorCode}", "9999", -1)
 
 		}
 
-		if payment.NotificationURL != "" {
+		if process.NotificationURL != "" {
 			needToSendNotification := false
 
-			switch paymentStatus {
+			switch PaymentProcessStatus {
 			case string(StatusAuthorized):
 				needToSendNotification = true
 			case string(StatusConfirmed):
@@ -77,21 +76,21 @@ func SetStatusHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r 
 			}
 
 			if needToSendNotification {
-				client, _ := p.GetClientByID(payment.ClientID)
+				client, _ := p.GetClientByID(process.ClientID)
 
-				ok, err := sendNotification(payment, client, provider)
+				ok, err := sendNotification(process, client, provider)
 
-				payment.NotificationResponseOkReceived = false
+				process.NotificationResponseOkReceived = false
 
 				if err != nil {
 					log.Printf("Tinkoff: %v", err)
 				} else if ok {
-					payment.NotificationResponseOkReceived = true
+					process.NotificationResponseOkReceived = true
 				} else {
 					log.Println("Tinkoff: incorrect response to the notification was received")
 				}
 
-				p.UpdatePayment(payment)
+				p.UpdateProcess(process)
 			}
 		}
 
@@ -99,58 +98,53 @@ func SetStatusHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r 
 	}
 }
 
-func SendNotificationHandler(p *paymentpkg.LibrePayment) func(w http.ResponseWriter, r *http.Request) {
+func SendNotificationHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		payment, provider, err := getPaymentAndProvider(r, p)
-
+		process, provider, err := getPaymentProcessAndProvider(r, p)
 		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 			return
 		}
 
-		client, _ := p.GetClientByID(payment.ClientID)
+		process.NotificationResponseOkReceived = false
 
-		ok, err := sendNotification(payment, client, provider)
+		client, _ := p.GetClientByID(process.ClientID)
 
-		payment.NotificationResponseOkReceived = false
-
+		ok, err := sendNotification(process, client, provider)
 		if err != nil {
 			log.Printf("Tinkoff: %v", err)
 		} else if ok {
-			payment.NotificationResponseOkReceived = true
+			process.NotificationResponseOkReceived = true
 		} else {
 			log.Println("Tinkoff: incorrect response to the notification was received")
 		}
 
-		p.UpdatePayment(payment)
+		p.UpdateProcess(process)
 
-		redirectUrl := fmt.Sprintf("/payment/%d", payment.PaymentID)
+		redirectUrl := fmt.Sprintf("/payment/%d", process.ProcessID)
 		http.Redirect(w, r, redirectUrl, http.StatusTemporaryRedirect)
 	}
 }
 
-func getPaymentAndProvider(r *http.Request, p *paymentpkg.LibrePayment) (paymentpkg.Payment, paymentpkg.Provider, error) {
-	paymentID, err := paymentpkg.GetPaymentIDFromURL(r)
-
+func getPaymentProcessAndProvider(r *http.Request, p *payment.Payment) (payment.PaymentProcess, payment.Provider, error) {
+	processID, err := payment.GetProcessIDFromURL(r)
 	if err != nil {
-		return paymentpkg.Payment{}, paymentpkg.Provider{}, err
+		return payment.PaymentProcess{}, payment.Provider{}, err
 	}
 
-	payment, err := p.GetPaymentByID(paymentID)
-
+	process, err := p.GetProcessByID(processID)
 	if err != nil {
-		return paymentpkg.Payment{}, paymentpkg.Provider{}, err
+		return payment.PaymentProcess{}, payment.Provider{}, err
 	}
 
-	provider, err := p.GetProviderByID(payment.ProviderID)
-
+	provider, err := p.GetProviderByID(process.ProviderID)
 	if err != nil {
-		return paymentpkg.Payment{}, paymentpkg.Provider{}, err
+		return payment.PaymentProcess{}, payment.Provider{}, err
 	}
 
-	if provider.Type != paymentpkg.TinkoffProvider {
-		return paymentpkg.Payment{}, paymentpkg.Provider{}, paymentpkg.ErrIncorrectPaymentProvider
+	if provider.Type != payment.TinkoffProvider {
+		return payment.PaymentProcess{}, payment.Provider{}, payment.ErrIncorrectPaymentProvider
 	}
 
-	return payment, provider, nil
+	return process, provider, nil
 }

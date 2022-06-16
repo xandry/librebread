@@ -3,6 +3,7 @@ package payment
 const (
 	tplIndex = `
 	<table cellpadding="7" border=1>
+		<caption>Payments ({{ .NumberOfProcesses }})</caption>
 		<thead>
 			<tr>
 			<td>Created On</td>
@@ -15,11 +16,11 @@ const (
 			</tr>
 		</thead>
 		<tbody>
-			{{ range .Payments }}
+			{{ range .Processes }}
 			<tr>
 			<td>{{ (.CreatedOn).Format "2006-01-02 15:04:05" }}</td>
 			<td>{{ .Provider }}</td>
-			<td><a href="{{ .PaymentURL }}">{{ .PaymentID }}</a></td>
+			<td><a href="{{ .PaymentURL }}">{{ .ProcessID }}</a></td>
 			<td>{{ .Amount }}</td>
 			<td><b>{{ .Status }}</b></td>
 			<td>{{ .Recurrent }}</td>

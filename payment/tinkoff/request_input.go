@@ -7,7 +7,7 @@ import (
 	"github.com/vasyahuyasa/librebread/payment"
 )
 
-type InitInput struct {
+type initInput struct {
 	TerminalKey     string `json:"TerminalKey"`
 	Amount          int64  `json:"Amount"`
 	OrderID         string `json:"OrderId"`
@@ -20,10 +20,32 @@ type InitInput struct {
 	Token           string `json:"Token"`
 }
 
-type GetStateInput struct {
+type chargeInput struct {
 	TerminalKey string `json:"TerminalKey"`
-	PaymentID   int64  `json:"PaymentId"`
+	ProcessID   int64  `json:"PaymentId"`
+	RebillID    int64  `json:"RebillId"`
 	Token       string `json:"Token"`
+}
+
+type getStateInput struct {
+	TerminalKey string `json:"TerminalKey"`
+	ProcessID   int64  `json:"PaymentId"`
+	Token       string `json:"Token"`
+}
+
+func initRequest(r *http.Request) (input initInput, err error) {
+	err = readJSON(r, &input)
+	return input, err
+}
+
+func chargeRequest(r *http.Request) (input chargeInput, err error) {
+	err = readJSON(r, &input)
+	return input, err
+}
+
+func getStateRequest(r *http.Request) (input getStateInput, err error) {
+	err = readJSON(r, &input)
+	return input, err
 }
 
 func readJSON(r *http.Request, obj interface{}) error {

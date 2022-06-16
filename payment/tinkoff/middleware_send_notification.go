@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	paymentpkg "github.com/vasyahuyasa/librebread/payment"
+	"github.com/vasyahuyasa/librebread/payment"
 )
 
 const (
@@ -15,13 +15,13 @@ const (
 	notificationTimeout = 10 * time.Second
 )
 
-func sendNotification(payment paymentpkg.Payment, client paymentpkg.Client, provider paymentpkg.Provider) (ok bool, err error) {
+func sendNotification(paymentProcess payment.PaymentProcess, client payment.Client, provider payment.Provider) (ok bool, err error) {
 	notification := map[string]interface{}{
 		"Pan":         client.CardNumber,
-		"PaymentId":   payment.PaymentID,
-		"Status":      payment.Status,
+		"PaymentId":   paymentProcess.ProcessID,
+		"Status":      paymentProcess.Status,
 		"RebillId":    client.RebillID,
-		"Amount":      payment.Amount,
+		"Amount":      paymentProcess.Amount,
 		"TerminalKey": provider.Login,
 	}
 
@@ -37,7 +37,7 @@ func sendNotification(payment paymentpkg.Payment, client paymentpkg.Client, prov
 		Timeout: notificationTimeout,
 	}
 
-	resp, err := httpClient.Post(payment.NotificationURL, "application/json", requestBody)
+	resp, err := httpClient.Post(paymentProcess.NotificationURL, "application/json", requestBody)
 	if err != nil {
 		return false, err
 	}
