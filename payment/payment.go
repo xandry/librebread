@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -22,6 +23,21 @@ type Payment struct {
 func NewPayment() *Payment {
 	return &Payment{
 		stor: NewMemoryStorage(),
+	}
+}
+
+func AddMockProviders(p *Payment) {
+	tinkoffMock := Provider{
+		ProviderID: 1,
+		Type:       TinkoffProvider,
+		Login:      "tinkoff-root",
+		Password:   "root",
+		URL:        "https://sms.oms.loc",
+	}
+
+	if err := p.AddProvider(tinkoffMock); err != nil {
+		log.Printf("Add mock providers: %v", err)
+		return
 	}
 }
 

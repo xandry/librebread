@@ -33,6 +33,13 @@ type getStateOutput struct {
 	ErrorCode   string `json:"ErrorCode"`
 }
 
+type errorOutput struct {
+	Success   bool   `json:"Success"`
+	ErrorCode string `json:"ErrorCode"`
+	Message   string `json:"Message"`
+	Details   string `json:"Details"`
+}
+
 func initResponse(paymentProcess payment.PaymentProcess, terminalKey string) initOutput {
 	return initOutput{
 		TerminalKey: terminalKey,
@@ -58,7 +65,7 @@ func chargeResponse(paymentProcess payment.PaymentProcess, terminalKey string) c
 	}
 }
 
-func getStateResponse(paymentProcess payment.PaymentProcess, terminalKey string) getStateOutput {
+func getStateResponseSuccess(paymentProcess payment.PaymentProcess, terminalKey string) getStateOutput {
 	return getStateOutput{
 		TerminalKey: terminalKey,
 		Amount:      paymentProcess.Amount,
@@ -67,5 +74,14 @@ func getStateResponse(paymentProcess payment.PaymentProcess, terminalKey string)
 		Status:      paymentProcess.Status,
 		ProcessID:   paymentProcess.ProcessID,
 		ErrorCode:   "0",
+	}
+}
+
+func getStateResponsePaymentNotFound() errorOutput {
+	return errorOutput{
+		Success:   false,
+		ErrorCode: "325",
+		Message:   "Неверные параметры.",
+		Details:   "Транзакция не найдена.",
 	}
 }

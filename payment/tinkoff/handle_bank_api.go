@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"time"
 
@@ -52,22 +51,13 @@ func InitHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Request
 			isRecurrent = true
 		}
 
-		scheme := provider.PaymentURLScheme
-		host, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			log.Printf("Tinkoff: %v", err)
-			return
-		}
-
 		processID := p.GenerateProcessID()
-
-		paymentURL := fmt.Sprintf("%s://%s/payment/%d", scheme, host, processID)
 
 		process := payment.PaymentProcess{
 			ProcessID:       processID,
 			ProviderID:      provider.ProviderID,
 			CreatedOn:       time.Now(),
-			PaymentURL:      paymentURL,
+			PaymentURL:      fmt.Sprintf("%s/payment/%d", provider.URL, processID),
 			SuccessURL:      input.SuccessURL,
 			FailURL:         input.FailURL,
 			NotificationURL: input.NotificationURL,
@@ -130,12 +120,17 @@ func GetStateHandler(p *payment.Payment) func(w http.ResponseWriter, r *http.Req
 
 		process, _, err := getPaymentProcessAndProviderByProcessID(input.ProcessID, p)
 		if err != nil {
-			log.Printf("Tinkoff: %v", err)
-			return
+			if err == payment.ErrPaymentProcessNotFound {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(getStateResponsePaymentNotFound())
+			} else {
+				log.Printf("Tinkoff: %v", err)
+				return
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(getStateResponse(process, input.TerminalKey))
+		json.NewEncoder(w).Encode(getStateResponseSuccess(process, input.TerminalKey))
 	}
 }
 

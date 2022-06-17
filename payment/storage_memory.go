@@ -12,13 +12,6 @@ const (
 	SberbankProvider ProviderType = "Sberbank"
 )
 
-type URLScheme string
-
-const (
-	httpScheme  URLScheme = "http"
-	httpsScheme URLScheme = "https"
-)
-
 type MemoryStorage struct {
 	storageMu                  sync.Mutex
 	providers                  map[int64]Provider
@@ -52,26 +45,16 @@ type Client struct {
 }
 
 type Provider struct {
-	ProviderID       int64
-	Type             ProviderType
-	Login            string
-	Password         string
-	PaymentURLScheme URLScheme
-}
-
-var mockProviders = map[int64]Provider{
-	1: {
-		ProviderID:       1,
-		Type:             TinkoffProvider,
-		Login:            "tinkoff-root",
-		Password:         "root",
-		PaymentURLScheme: httpScheme,
-	},
+	ProviderID int64
+	Type       ProviderType
+	Login      string
+	Password   string
+	URL        string
 }
 
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{
-		providers:                  mockProviders,
+		providers:                  make(map[int64]Provider),
 		paymentProcesses:           make(map[int64]PaymentProcess),
 		clients:                    make(map[string]Client),
 		clientIDsIndexesByRebillID: make(map[int64]string),

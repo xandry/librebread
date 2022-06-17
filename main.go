@@ -236,6 +236,7 @@ func main() {
 	libreCall := flashcall.NewLibrecall(&flashcall.MemoryStorage{})
 
 	librePayment := payment.NewPayment()
+	payment.AddMockProviders(librePayment)
 
 	go func() {
 		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall, librePayment)
