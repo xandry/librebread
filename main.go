@@ -547,6 +547,17 @@ func flashcallIndexhandler(call *flashcall.LibreCall) func(w http.ResponseWriter
 	return func(w http.ResponseWriter, r *http.Request) {
 		calls := call.AllCallsSortedDesc()
 
+		// special case for Json
+		if isJson(r) {
+			enc := json.NewEncoder(w)
+
+			err := enc.Encode(calls)
+			if err != nil {
+				log.Printf("flashcall: cannot encode to json: %v", err)
+			}
+			return
+		}
+
 		b := strings.Builder{}
 
 		b.WriteString(flashcallTableHeaderWithCount(len(calls)))
