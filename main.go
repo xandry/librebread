@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/vasyahuyasa/librebread/flashcall"
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
@@ -307,13 +307,12 @@ func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
 	mux.Post("/libre/flashcall", flashcall.LibrecallHandler(libreCall))
 }
 
-func tinkoffRoutes(r chi.Router, librePayment *payment.Payment) {
-	r.Route("/tinkoff", func(r chi.Router) {
-		r.Use(tinkoff.CheckApplicationJson)
-		r.Post("/init/", tinkoff.InitHandler(librePayment))
-		r.Post("/charge/", tinkoff.ChargeHandler(librePayment))
-		r.Post("/getstate/", tinkoff.GetStateHandler(librePayment))
-	})
+func tinkoffRoutes(mux *chi.Mux, librePayment *payment.Payment) {
+	mux.Get("/tinkoff/{processID}/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
+	mux.Get("/tinkoff/{processID}/send_notification", tinkoff.SendNotificationHandler(librePayment))
+	mux.Post("/tinkoff/init", tinkoff.InitHandler(librePayment))
+	mux.Post("/tinkoff/charge", tinkoff.ChargeHandler(librePayment))
+	mux.Post("/tinkoff/getstate", tinkoff.GetStateHandler(librePayment))
 }
 
 func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall, librePayment *payment.Payment) {
@@ -332,10 +331,6 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 			r.Get("/flashcall", flashcallIndexhandler(libreCall))
 			r.Get("/payments", librePayment.IndexPaymentHandler)
 			r.Get("/payment/{processID}", librePayment.ViewPaymentHandler)
-		})
-		r.Route("/tinkoff/{processID}", func(r chi.Router) {
-			r.Get("/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
-			r.Get("/send_notification", tinkoff.SendNotificationHandler(librePayment))
 		})
 	})
 
