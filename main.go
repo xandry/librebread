@@ -310,9 +310,9 @@ func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
 func tinkoffRoutes(mux *chi.Mux, librePayment *payment.Payment) {
 	mux.Get("/tinkoff/{processID}/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
 	mux.Get("/tinkoff/{processID}/send_notification", tinkoff.SendNotificationHandler(librePayment))
-	mux.Post("/tinkoff/init", tinkoff.InitHandler(librePayment))
-	mux.Post("/tinkoff/charge", tinkoff.ChargeHandler(librePayment))
-	mux.Post("/tinkoff/getstate", tinkoff.GetStateHandler(librePayment))
+	mux.Post("/tinkoff/Init/", tinkoff.InitHandler(librePayment))
+	mux.Post("/tinkoff/Charge/", tinkoff.ChargeHandler(librePayment))
+	mux.Post("/tinkoff/GetState/", tinkoff.GetStateHandler(librePayment))
 }
 
 func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall, librePayment *payment.Payment) {
