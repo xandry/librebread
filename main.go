@@ -348,6 +348,7 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	helpdeskRoutes(r, hstor, sseNotification)
 	libreBreadPushRoutes(r, libreBreadhandler)
 	libreCallRoutes(r, libreCall)
+	tinkoffRoutes(r, librePayment)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
