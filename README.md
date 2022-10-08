@@ -75,6 +75,19 @@ __TinkoffPayment__
 | `/tinkoff/charge`   | performs autopay |
 | `/tinkoff/getstate` | returns the current payment status |
 
+__LibrePayment__
+
+| URL                          | DESCRIPTION |
+|------------------------------|-------------|
+| `/libre/payment`             | creates payment |
+| `/libre/payment/{id}`        | payment status |
+| `/libre/payment/{id}/confirm`| confirm payment |
+| `/libre/payment/{id}/reject` | reject payment |
+
+| Environment             | Description |
+|-------------------------|-------------|
+| `LIBREPAYMENT_BASE_URL` | Base url for generate payment link. Default `http://localhost` |
+
 ### SMTP 25 port
 
 Plain SMTP server
