@@ -18,10 +18,10 @@ type Phone struct {
 }
 
 type CallRecord struct {
-	CallAt time.Time
-	To     string
-	From   string
-	Code   string
+	CallAt time.Time `json:"Time"`
+	To     string    `json:"To"`
+	From   string    `json:"From"`
+	Code   string    `json:"Code"`
 }
 
 type LibreCall struct {

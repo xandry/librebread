@@ -12,12 +12,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/vasyahuyasa/librebread/flashcall"
 	"github.com/vasyahuyasa/librebread/helpdesk"
 	"github.com/vasyahuyasa/librebread/mailserver"
 	"github.com/vasyahuyasa/librebread/payment"
+	"github.com/vasyahuyasa/librebread/payment/librepayment"
 	"github.com/vasyahuyasa/librebread/payment/tinkoff"
 	"github.com/vasyahuyasa/librebread/push"
 	"github.com/vasyahuyasa/librebread/sms"
@@ -57,6 +58,7 @@ const (
 				<li><a href="/push">push</a></li>
 				<li><a href="/flashcall">flashcall</a></li>
 				<li><a href="/payments">payments</a></li>
+				<li><a href="/librepayments">librepayments</a></li>
 			</ol>
 			<button onclick="Notification.requestPermission()">notifications</button>`
 
@@ -235,11 +237,17 @@ func main() {
 	// libre falshcall
 	libreCall := flashcall.NewLibrecall(&flashcall.MemoryStorage{})
 
-	librePayment := payment.NewPayment()
-	payment.AddMockProviders(librePayment)
+	// tinkoff mock
+	payments := payment.NewPayment()
+	payment.AddMockProviders(payments)
+
+	// librepayment handlers
+	librePayment := librepayment.NewDefaultLibrePyament()
+	urlGenerator := librepayment.NewPaymentUrlGeneratorFromENV()
+	librePaymentHandler := librepayment.NewLibrePaymentHandler(librePayment, urlGenerator)
 
 	go func() {
-		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall, librePayment)
+		httpServer(smsStor, hstor, smsru, mailStor, sseNotifier, libreSMS, user, password, libreBreadHandler, pushStorage, libreCall, payments, librePaymentHandler)
 	}()
 
 	// devino telecom mock server
@@ -250,7 +258,7 @@ func main() {
 	smsRuRoutes(r, smsru)
 	libreBreadSmsRoutes(r, libreSMS)
 	helpdeskRoutes(r, hstor, sseNotifier)
-	tinkoffRoutes(r, librePayment)
+	tinkoffRoutes(r, payments)
 
 	go func() {
 		if disableTLS {
@@ -307,16 +315,25 @@ func libreCallRoutes(mux *chi.Mux, libreCall *flashcall.LibreCall) {
 	mux.Post("/libre/flashcall", flashcall.LibrecallHandler(libreCall))
 }
 
-func tinkoffRoutes(r chi.Router, librePayment *payment.Payment) {
-	r.Route("/tinkoff", func(r chi.Router) {
-		r.Use(tinkoff.CheckApplicationJson)
-		r.Post("/init/", tinkoff.InitHandler(librePayment))
-		r.Post("/charge/", tinkoff.ChargeHandler(librePayment))
-		r.Post("/getstate/", tinkoff.GetStateHandler(librePayment))
-	})
+func tinkoffRoutes(mux *chi.Mux, librePayment *payment.Payment) {
+	mux.Get("/tinkoff/{processID}/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
+	mux.Get("/tinkoff/{processID}/send_notification", tinkoff.SendNotificationHandler(librePayment))
+	mux.Post("/tinkoff/Init/", tinkoff.InitHandler(librePayment))
+	mux.Post("/tinkoff/Charge/", tinkoff.ChargeHandler(librePayment))
+	mux.Post("/tinkoff/GetState/", tinkoff.GetStateHandler(librePayment))
 }
 
-func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage, sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string, libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall, librePayment *payment.Payment) {
+func librePaymentRoutes(mux *chi.Mux, librePaymentHandler *librepayment.LibrePaymentHandler) {
+	mux.Post("/libre/payment", librePaymentHandler.RegisterPayment)
+	mux.Get("/libre/payment/{payment_id}", librePaymentHandler.GetPaymentStatus)
+	mux.Post("/libre/payment/{payment_id}/confirm", librePaymentHandler.ConfirmPayment)
+	mux.Post("/libre/payment/{payment_id}/reject", librePaymentHandler.RejectPayment)
+}
+
+func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.SmsRu, mailStor *mailserver.MailStorage,
+	sseNotification *ssenotifier.Broker, libreSMS *sms.LibreBread, user string, password string,
+	libreBreadhandler *push.LibreBreadHandler, pushStore push.Storage, libreCall *flashcall.LibreCall,
+	librePayment *payment.Payment, librePaymentHandler *librepayment.LibrePaymentHandler) {
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
 		if user != "" && password != "" {
@@ -332,10 +349,8 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 			r.Get("/flashcall", flashcallIndexhandler(libreCall))
 			r.Get("/payments", librePayment.IndexPaymentHandler)
 			r.Get("/payment/{processID}", librePayment.ViewPaymentHandler)
-		})
-		r.Route("/tinkoff/{processID}", func(r chi.Router) {
-			r.Get("/set_status/{status}", tinkoff.SetStatusHandler(librePayment))
-			r.Get("/send_notification", tinkoff.SendNotificationHandler(librePayment))
+			r.Get("/librepayments", librePaymentHandler.IndexPage)
+			r.Get("/librepayments/{payment_id}", librePaymentHandler.PaymentPage)
 		})
 	})
 
@@ -348,6 +363,8 @@ func httpServer(stor *sms.Storage, hstor *helpdesk.HelpdeskStorage, smsru sms.Sm
 	helpdeskRoutes(r, hstor, sseNotification)
 	libreBreadPushRoutes(r, libreBreadhandler)
 	libreCallRoutes(r, libreCall)
+	tinkoffRoutes(r, librePayment)
+	librePaymentRoutes(r, librePaymentHandler)
 
 	log.Println("start HTTP on", addr)
 	err := http.ListenAndServe(addr, r)
@@ -570,6 +587,17 @@ func pushByIDHandler(store push.Storage) func(w http.ResponseWriter, r *http.Req
 func flashcallIndexhandler(call *flashcall.LibreCall) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		calls := call.AllCallsSortedDesc()
+
+		// special case for Json
+		if isJson(r) {
+			enc := json.NewEncoder(w)
+
+			err := enc.Encode(calls)
+			if err != nil {
+				log.Printf("flashcall: cannot encode to json: %v", err)
+			}
+			return
+		}
 
 		b := strings.Builder{}
 
